@@ -1,0 +1,678 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajouter un Patient - Global Hospitals</title>
+    <style>
+        :root {
+            --primary-color: #2ecc71;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+            --background-light: #f8f9fa;
+            --background-white: #ffffff;
+            --border-color: #e9ecef;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.05);
+            --shadow-medium: 0 5px 25px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--background-light);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            opacity: 0.05;
+            z-index: -1;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            width: 6px;
+            height: 6px;
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        .particle:nth-child(2) { left: 20%; animation-delay: -1s; }
+        .particle:nth-child(3) { left: 40%; animation-delay: -2s; }
+        .particle:nth-child(4) { left: 60%; animation-delay: -3s; }
+        .particle:nth-child(5) { left: 80%; animation-delay: -4s; }
+
+        @keyframes float {
+            0%, 100% { 
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(90vh) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-10vh) scale(1);
+            }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: var(--background-white);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .back-btn {
+            background: var(--gradient-primary);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-light);
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hospital-logo {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Form Card */
+        .form-card {
+            background: var(--background-white);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: var(--shadow-medium);
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .form-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-primary);
+            border-radius: 25px 25px 0 0;
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .form-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-secondary);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 35px;
+            margin: 0 auto 20px;
+            box-shadow: var(--shadow-light);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .form-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Form Groups */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(248, 249, 250, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-select {
+            cursor: pointer;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 12px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 45px;
+        }
+
+        /* Required indicator */
+        .required::after {
+            content: '*';
+            color: var(--accent-color);
+            margin-left: 4px;
+        }
+
+        /* Form Actions */
+        .form-actions {
+            display: flex;
+            gap: 20px;
+            justify-content: flex-end;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary {
+            background: var(--text-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #6c757d;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn-primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        /* Loading state */
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn-loading::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Success/Error messages */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .alert-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .alert-error {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header {
+                padding: 15px 20px;
+                border-radius: 15px;
+            }
+
+            .header-title {
+                font-size: 20px;
+            }
+
+            .form-card {
+                padding: 25px;
+                border-radius: 20px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+
+        /* Django form errors */
+        .errorlist {
+            list-style: none;
+            padding: 0;
+            margin: 5px 0 0 0;
+        }
+
+        .errorlist li {
+            color: var(--accent-color);
+            font-size: 12px;
+            margin: 2px 0;
+        }
+
+        .form-group.has-error .form-input,
+        .form-group.has-error .form-select,
+        .form-group.has-error .form-textarea {
+            border-color: var(--accent-color);
+            background-color: rgba(231, 76, 60, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating particles -->
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <a href="{% url 'medcin_patientl' %}" class="back-btn">←</a>
+                <div>
+                    <h1 class="header-title">Nouveau Patient</h1>
+                </div>
+            </div>
+            <div class="hospital-logo">Global Hospitals</div>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <span>{% if message.tags == 'success' %}✓{% else %}⚠{% endif %}</span>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Form Card -->
+        <div class="form-card">
+            <div class="form-header">
+                <div class="form-icon">👤</div>
+                <h2 class="form-title">Informations du Patient</h2>
+                <p class="form-subtitle">Veuillez remplir tous les champs requis pour créer un nouveau dossier patient</p>
+            </div>
+
+            <form method="post" id="patientForm">
+                {% csrf_token %}
+                <div class="form-grid">
+                    <!-- Informations personnelles -->
+                    <div class="form-group {% if form.nom.errors %}has-error{% endif %}">
+                        <label for="{{ form.nom.id_for_label }}" class="form-label required">Nom</label>
+                        {{ form.nom }}
+                        {{ form.nom.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.prenom.errors %}has-error{% endif %}">
+                        <label for="{{ form.prenom.id_for_label }}" class="form-label required">Prénom</label>
+                        {{ form.prenom }}
+                        {{ form.prenom.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.date_naissance.errors %}has-error{% endif %}">
+                        <label for="{{ form.date_naissance.id_for_label }}" class="form-label required">Date de naissance</label>
+                        {{ form.date_naissance }}
+                        {{ form.date_naissance.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.sexe.errors %}has-error{% endif %}">
+                        <label for="{{ form.sexe.id_for_label }}" class="form-label required">Sexe</label>
+                        {{ form.sexe }}
+                        {{ form.sexe.errors }}
+                    </div>
+
+                    <!-- Contact -->
+                    <div class="form-group {% if form.telephone.errors %}has-error{% endif %}">
+                        <label for="{{ form.telephone.id_for_label }}" class="form-label required">Téléphone</label>
+                        {{ form.telephone }}
+                        {{ form.telephone.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.email.errors %}has-error{% endif %}">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                        {{ form.email }}
+                        {{ form.email.errors }}
+                    </div>
+
+                    <!-- Adresse -->
+                    <div class="form-group full-width {% if form.adresse.errors %}has-error{% endif %}">
+                        <label for="{{ form.adresse.id_for_label }}" class="form-label">Adresse</label>
+                        {{ form.adresse }}
+                        {{ form.adresse.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.ville.errors %}has-error{% endif %}">
+                        <label for="{{ form.ville.id_for_label }}" class="form-label">Ville</label>
+                        {{ form.ville }}
+                        {{ form.ville.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.code_postal.errors %}has-error{% endif %}">
+                        <label for="{{ form.code_postal.id_for_label }}" class="form-label">Code postal</label>
+                        {{ form.code_postal }}
+                        {{ form.code_postal.errors }}
+                    </div>
+
+                    <!-- Informations médicales -->
+                    <div class="form-group full-width {% if form.notes_medicales.errors %}has-error{% endif %}">
+                        <label for="{{ form.notes_medicales.id_for_label }}" class="form-label">Notes médicales initiales</label>
+                        {{ form.notes_medicales }}
+                        {{ form.notes_medicales.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.contact_urgence.errors %}has-error{% endif %}">
+                        <label for="{{ form.contact_urgence.id_for_label }}" class="form-label">Contact d'urgence</label>
+                        {{ form.contact_urgence }}
+                        {{ form.contact_urgence.errors }}
+                    </div>
+
+                    <div class="form-group {% if form.groupe_sanguin.errors %}has-error{% endif %}">
+                        <label for="{{ form.groupe_sanguin.id_for_label }}" class="form-label">Groupe sanguin</label>
+                        {{ form.groupe_sanguin }}
+                        {{ form.groupe_sanguin.errors }}
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="{% url 'medcin_patientl' %}" class="btn btn-secondary">Annuler</a>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        Enregistrer le patient
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('patientForm');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // Appliquer les classes CSS aux champs de formulaire Django
+            const inputs = form.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="date"]');
+            const selects = form.querySelectorAll('select');
+            const textareas = form.querySelectorAll('textarea');
+
+            inputs.forEach(input => {
+                input.classList.add('form-input');
+                if (input.hasAttribute('required')) {
+                    input.closest('.form-group').querySelector('.form-label').classList.add('required');
+                }
+            });
+
+            selects.forEach(select => {
+                select.classList.add('form-select');
+                if (select.hasAttribute('required')) {
+                    select.closest('.form-group').querySelector('.form-label').classList.add('required');
+                }
+            });
+
+            textareas.forEach(textarea => {
+                textarea.classList.add('form-textarea');
+            });
+
+            // Gestion du formulaire
+            form.addEventListener('submit', function(e) {
+                submitBtn.classList.add('btn-loading');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Enregistrement...';
+            });
+
+            // Validation en temps réel
+            inputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    validateField(this);
+                });
+            });
+
+            selects.forEach(select => {
+                select.addEventListener('change', function() {
+                    validateField(this);
+                });
+            });
+
+            function validateField(field) {
+                const formGroup = field.closest('.form-group');
+                const isRequired = field.hasAttribute('required');
+                const isEmpty = !field.value.trim();
+
+                if (isRequired && isEmpty) {
+                    formGroup.classList.add('has-error');
+                } else if (field.type === 'email' && field.value && !isValidEmail(field.value)) {
+                    formGroup.classList.add('has-error');
+                } else {
+                    formGroup.classList.remove('has-error');
+                }
+            }
+
+            function isValidEmail(email) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                return emailRegex.test(email);
+            }
+
+            // Animation des particules
+            function createParticle() {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                particle.style.opacity = Math.random() * 0.5 + 0.2;
+                document.body.appendChild(particle);
+
+                setTimeout(() => {
+                    particle.remove();
+                }, 6000);
+            }
+
+            // Créer des particules périodiquement
+            setInterval(createParticle, 2000);
+        });
+    </script>
+</body>
+</html>

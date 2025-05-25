@@ -1,0 +1,48 @@
+/* Animation pour les nouveaux éléments */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.widget, .table-container {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Styles pour les statuts */
+.status {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status.scheduled {
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.status.completed {
+    background-color: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+}
+
+.status.cancelled {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.status.urgent {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+}
+
+.status.suivi {
+    background-color: rgba(23, 162, 184, 0.2);
+    color: #17a2b8;
+}
+
+/* Message quand pas de données */
+.text-center {
+    text-align: center;
+}

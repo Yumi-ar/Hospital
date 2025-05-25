@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Hospitals - {% block title %}Espace Médecin{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'doctor/css/styles.css' %}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar">D</div>
+                <span class="sidebar-logo">
+                    {% if request.user.doctorprofile %}
+                        Dr. {{ request.user.get_short_name }}
+                    {% else %}
+                        Espace Médecin
+                    {% endif %}
+                </span>
+            </div>
+            <div class="sidebar-menu">
+                <a href="{% url 'doctor:dashboard' %}" class="menu-item active">
+                    <span class="menu-icon">📊</span>
+                    <span>Tableau de bord</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">👤</span>
+                    <span>Profil</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">📅</span>
+                    <span>Rendez-vous</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">👥</span>
+                    <span>Patients</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">🔬</span>
+                    <span>Examens</span>
+                </a>
+                <a href="{% url 'logout' %}" class="menu-item">
+                    <span class="menu-icon">🚪</span>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="{% static 'doctor/js/main.js' %}"></script>
+</body>
+</html>

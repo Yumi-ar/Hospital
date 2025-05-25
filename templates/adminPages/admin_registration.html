@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+{% load static %}
+{% load widget_tweaks %}
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Admin Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="{% static 'adminstyle.css' %}"> 
+</head>
+<body>
+    {% include "navbar.html" %}
+
+    <div class="container">
+        <div class="form-container">
+            <div class="form-header">
+                <h2><i class="fas fa-user-shield"></i> Create Administrator Account</h2>
+                <p>Fill in the details below to create a new admin account</p>
+            </div>
+            
+            <form id="adminRegistrationForm" method="POST" novalidate>
+                {% csrf_token %}
+                
+                
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            {% for error in form.non_field_errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Personal Information Section -->
+                <div class="form-section">
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label required-field">
+                                First Name
+                            </label>
+                            {% render_field form.first_name class="form-control" placeholder="Enter first name" %}
+                            {% for error in form.first_name.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label required-field">
+                                Last Name
+                            </label>
+                            {% render_field form.last_name class="form-control" placeholder="Enter last name" %}
+                            {% for error in form.last_name.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.dob.id_for_label }}" class="form-label required-field">
+                                Date of Birth
+                            </label>
+                            {% render_field form.dob class="form-control" type="date" %}
+                            {% for error in form.dob.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label required-field">Gender</label>
+                            <div class="gender-options">
+                                {% for radio in form.gender %}
+                                    <div class="gender-option">
+                                        {{ radio.tag }}
+                                        <label for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% for error in form.gender.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location Information Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-map-marker-alt"></i> Location Information</h3>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.country.id_for_label }}" class="form-label required-field">
+                                Country
+                            </label>
+                            {% render_field form.country class="form-select" %}
+                            {% for error in form.country.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="{{ form.region.id_for_label }}" class="form-label">
+                                Region
+                            </label>
+                           
+                            {% render_field form.region class="form-select" disabled="disabled" %}
+                            {% for error in form.region.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contact Information Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-envelope"></i> Contact Information</h3>
+                    </div>                         
+                    <div class="form-group">
+                        <label class="section-label">Email Addresses</label>
+                        <div class="dynamic-input-group" id="emailGroup">
+                            <div class="input-item">
+                                <div class="input-wrapper">
+                                    <i class="fas fa-envelope input-icon"></i>
+                                    <input type="email" class="form-control email-input" placeholder="Enter email address" required>
+                                </div>
+                                <button type="button" class="btn-remove" onclick="removeInput(this)" disabled>
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-add-more" onclick="addEmailInput()">
+                            <i class="fas fa-plus"></i> Add Another Email
+                        </button>
+                        {% render_field form.emails style="display: none;" %}
+                        {% for error in form.emails.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Phone Numbers -->
+                    <div class="form-group">
+                        <label class="section-label">Phone Numbers</label>
+                        <div class="dynamic-input-group" id="phoneGroup">
+                            <div class="input-item">
+                                <div class="input-wrapper">
+                                    <i class="fas fa-phone input-icon"></i>
+                                    <input type="tel" class="form-control phone-input" placeholder="Enter phone number" required>
+                                </div>
+                                <button type="button" class="btn-remove" onclick="removeInput(this)" disabled>
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-add-more" onclick="addPhoneInput()">
+                            <i class="fas fa-plus"></i> Add Another Phone
+                        </button>
+                        {% render_field form.phones style="display: none;" %}
+                        {% for error in form.phones.errors %}
+                            <div class="error-message">
+                                <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Security Information Section -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-lock"></i> Security Information</h3>
+                    </div>
+                    
+                    <!-- Password -->
+                    <div class="form-row"></div>
+                        <div class="form-group">
+                            <label for="{{ form.password.id_for_label }}" class="form-label required-field">
+                                Password
+                            </label>
+                            <div class="password-field-container">
+                                {% render_field form.password class="form-control" placeholder="Create password" id="passwordField" %}
+                                <button type="button" class="toggle-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            
+                            <div class="password-requirements">
+                                <div class="requirements-header">Password must contain:</div>
+                                <ul class="requirements-list">
+                                    <li id="length-req">At least 6 characters</li>
+                                    <li id="lowercase-req">One lowercase letter (a-z)</li>
+                                    <li id="uppercase-req">One uppercase letter (A-Z)</li>
+                                    <li id="number-req">One number (0-9)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="password-strength">
+                                <div class="strength-label">Password strength:</div>
+                                <div class="strength-bar">
+                                    <div class="strength-indicator" id="strengthBar"></div>
+                                </div>
+                                <span class="strength-text" id="strengthText">Too weak</span>
+                            </div>
+                            
+                            {% for error in form.password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <!-- Confirm Password -->
+                        <div class="form-group">
+                            <label for="{{ form.confirm_password.id_for_label }}" class="form-label required-field">
+                                Confirm Password
+                            </label>
+                            <div class="password-field-container">
+                                {% render_field form.confirm_password class="form-control" placeholder="Confirm password" id="confirmPasswordField" %}
+                                <button type="button" class="toggle-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="passwordMatch" class="password-match"></div>
+                            {% for error in form.confirm_password.errors %}
+                                <div class="error-message">
+                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register Administrator</span>
+                        <div class="loading-spinner" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </button>
+                    
+                    <div class="login-link">
+                        Already have an account? 
+                        <a href="{% url 'adminlogin' %}">
+                            <i class="fas fa-sign-in-alt"></i> Login here
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+   
+    {{ COUNTRY_REGION_CHOICES|json_script:"country-region-data" }}   
+    <script src="{% static 'js/admin_registration.js' %}"></script>  
+</body>
+</html>

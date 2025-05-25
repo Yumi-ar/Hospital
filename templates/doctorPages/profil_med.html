@@ -1,0 +1,345 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profil Médecin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f7f9;
+        }
+        
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #2b506e 0%, #1e88c3 100%);
+            color: white;
+            padding: 20px 0;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background-color: #ddd;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: white;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        
+        .menu-item.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .menu-icon {
+            margin-right: 10px;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            border-radius: 20px;
+            padding: 8px 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-bar input {
+            border: none;
+            outline: none;
+            margin-left: 5px;
+            font-size: 14px;
+            width: 200px;
+        }
+        
+        .profile-container {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .profile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .profile-header h2 {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        
+        .full-width {
+            grid-column: span 2;
+        }
+        
+        .photo-upload {
+            display: flex;
+            align-items: center;
+        }
+        
+        .photo-placeholder {
+            width: 100px;
+            height: 100px;
+            background-color: #f0f0f0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            overflow: hidden;
+        }
+        
+        .photo-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .upload-btn {
+            background-color: #f0f0f0;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-save {
+            background-color: #1e88c3;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 20px;
+        }
+        
+        .btn-save:hover {
+            background-color: #1976a8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="header">
+            <div class="avatar">{{ request.user.first_name|first|upper }}</div>
+            <h3>Dr. {{ request.user.get_full_name }}</h3>
+        </div>
+        
+        <a href="{% url 'medcin_dashboard' %}" class="menu-item">
+            <span class="menu-icon">📊</span>
+            <span>Tableau de bord</span>
+        </a>
+        
+        <a href="{% url 'medcin_profil' %}" class="menu-item active">
+            <span class="menu-icon">👤</span>
+            <span>Mon Profil</span>
+        </a>
+        
+        <a href="{% url 'medcin_rdvmed' %}" class="menu-item">
+            <span class="menu-icon">📅</span>
+            <span>Rendez-vous</span>
+        </a>
+        
+        <a href="{% url 'medcin_patientl' %}" class="menu-item">
+            <span class="menu-icon">👥</span>
+            <span>Patients</span>
+        </a>
+        
+        <a href="{% url 'medcin_examin' %}" class="menu-item">
+            <span class="menu-icon">🔬</span>
+            <span>Examens</span>
+        </a>
+        
+        <a href="{% url 'logout' %}" class="menu-item">
+            <span class="menu-icon">🚪</span>
+            <span>Déconnexion</span>
+        </a>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="content">
+        <div class="top-bar">
+            <h1>Mon Profil</h1>
+            <div class="search-bar">
+                <span>🔍</span>
+                <input type="text" placeholder="Rechercher un patient..." id="patientSearch">
+            </div>
+        </div>
+        
+        <div class="profile-container">
+            <div class="profile-header">
+                <h2>Informations personnelles</h2>
+            </div>
+            
+            <form method="POST" action="{% url 'medcin_profil' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="id_first_name">Prénom</label>
+                        <input type="text" id="id_first_name" name="first_name" value="{{ request.user.first_name }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_last_name">Nom</label>
+                        <input type="text" id="id_last_name" name="last_name" value="{{ request.user.last_name }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_specialite">Spécialité médicale</label>
+                        <input type="text" id="id_specialite" name="specialite" value="{{ medecin.specialite }}" placeholder="Ex: Cardiologue, Généraliste...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_email">Adresse e-mail</label>
+                        <input type="email" id="id_email" name="email" value="{{ request.user.email }}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_telephone">Téléphone</label>
+                        <input type="tel" id="id_telephone" name="telephone" value="{{ medecin.telephone }}" placeholder="Ex: +213623456789">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_rpps">Numéro RPPS</label>
+                        <input type="text" id="id_rpps" name="rpps" value="{{ medecin.rpps }}" placeholder="N° d'enregistrement au conseil de l'ordre">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="id_etablissement">Établissement principal</label>
+                        <input type="text" id="id_etablissement" name="etablissement" value="{{ medecin.etablissement }}" placeholder="Hôpital, clinique, etc.">
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="id_adresse_cabinet">Adresse du cabinet</label>
+                        <textarea id="id_adresse_cabinet" name="adresse_cabinet">{{ medecin.adresse_cabinet }}</textarea>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label>Photo de profil</label>
+                        <div class="photo-upload">
+                            <div class="photo-placeholder">
+                                {% if medecin.photo %}
+                                    <img id="profile-preview" src="{{ medecin.photo.url }}" alt="Photo de profil">
+                                {% else %}
+                                    <img id="profile-preview" src="{% static 'images/default_profile.png' %}" alt="Photo par défaut">
+                                {% endif %}
+                            </div>
+                            <input type="file" id="id_photo" name="photo" accept="image/*" style="display: none;">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('id_photo').click()">Changer la photo</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-save">Enregistrer les modifications</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Aperçu de l'image avant téléchargement
+        document.getElementById('id_photo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('profile-preview').src = e.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Recherche de patients
+        document.getElementById('patientSearch').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            // Implémentez ici la logique de recherche AJAX si nécessaire
+            console.log('Recherche:', searchTerm);
+        });
+    </script>
+</body>
+</html>

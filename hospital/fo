@@ -1,0 +1,246 @@
+from django.db import models
+from django.contrib.auth.models import AbstractUser , BaseUserManager, Group, Permission
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('L\'email est obligatoire')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('type_utilisateur', 'ADMIN')
+        
+        return self.create_user(email, password, **extra_fields)
+
+class Utilisateur(AbstractUser ):
+    SEXE_CHOICES = [('MALE', 'Male'), ('FEMALE', 'Female')]
+    GROUPE_SANGUIN_CHOICES = [
+        ('O+', 'O+'), ('O-', 'O-'), ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'), ('AB+', 'AB+'), ('AB-', 'AB-')
+    ]
+    TYPE_UTILISATEUR_CHOICES = [
+        ('PATIENT', 'Patient'),
+        ('PROFESSIONNEL', 'Professionnel'),
+        ('ADMIN', 'Admin')
+    ]
+
+    # Remplacer username par email
+    username = None
+    email = models.EmailField(unique=True)
+    
+    # Informations personnelles
+    date_naissance = models.DateField(null=True, blank=True)
+    sexe = models.CharField(max_length=6, choices=SEXE_CHOICES, null=True, blank=True)
+    groupe_sanguin = models.CharField(max_length=3, choices=GROUPE_SANGUIN_CHOICES, null=True, blank=True)
+    nationalite = models.CharField(max_length=40, null=True, blank=True)
+    type_utilisateur = models.CharField(max_length=13, choices=TYPE_UTILISATEUR_CHOICES)
+    telephone = models.CharField(max_length=15, null=True, blank=True)
+
+    # Specify related_name for groups and user_permissions
+    groups = models.ManyToManyField(
+        Group,
+        related_name='utilisateur_set',  # Change this to a unique name
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        verbose_name='groups'
+    )
+    
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='utilisateur_set',  # Change this to a unique name
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions'
+    )
+
+    # Champs requis par Django
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['first_name', 'last_name']
+    
+    objects = UserManager()
+    
+    @property
+    def get_name(self):
+        return f"{self.first_name} {self.last_name}"
+    
+    def __str__(self):
+        return f"{self.get_name} ({self.get_type_utilisateur_display()})"
+
+
+class Continent(models.Model):
+    nom = models.CharField(max_length=20)
+    nombre_pays = models.IntegerField()
+    
+    def __str__(self):
+        return self.nom
+
+class Pays(models.Model):
+    nom = models.CharField(max_length=20)
+    capitale = models.CharField(max_length=20)
+    langue_officielle = models.CharField(max_length=20)
+    monnaie = models.CharField(max_length=10)
+    president = models.CharField(max_length=40)
+    superficie = models.FloatField()
+    continent = models.ForeignKey(Continent, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Region(models.Model):
+    nom = models.CharField(max_length=20)
+    superficie = models.FloatField()
+    population = models.IntegerField()
+    pays = models.ForeignKey(Pays, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Wilaya(models.Model):
+    nom = models.CharField(max_length=40)
+    nom_wali = models.CharField(max_length=40)
+    chef_lieu = models.CharField(max_length=40)
+    population = models.IntegerField()
+    superficie = models.FloatField()
+    region = models.ForeignKey(Region, on_delete=models.CASCADE)
+    pays = models.ForeignKey(Pays, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Daira(models.Model):
+    nom = models.CharField(max_length=30)
+    nombre_communes = models.IntegerField()
+    wilaya = models.ForeignKey(Wilaya, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Commune(models.Model):
+    nom = models.CharField(max_length=30)
+    superficie = models.FloatField()
+    population = models.IntegerField()
+    nom_maire = models.CharField(max_length=20)
+    daira = models.ForeignKey(Daira, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Ville(models.Model):
+    nom = models.CharField(max_length=20)
+    superficie = models.FloatField()
+    population = models.IntegerField()
+    commune = models.ForeignKey(Commune, on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return self.nom
+
+class Adresse(models.Model):
+    numero_rue = models.CharField(max_length=20)
+    nom_rue = models.CharField(max_length=20)
+    coord_gps = models.CharField(max_length=50)
+    ville = models.ForeignKey(Ville, on_delete=models.CASCADE)
+    utilisateur = models.ForeignKey(Utilisateur, on_delete=models.CASCADE, related_name='adresses')
+    def __str__(self):
+        return f"{self.numero_rue} {self.nom_rue}, {self.ville}"
+
+class Specialite(models.Model):
+    nom = models.CharField(max_length=20)
+    domaine = models.CharField(max_length=20)
+    description = models.TextField()
+    
+    def __str__(self):
+        return self.nom
+
+class Professionnel(models.Model):
+    TYPE_PROFESSIONNEL_CHOICES = [
+        ('MEDECIN', 'Medecin'),
+        ('INFIRMIER', 'Infirmier'),
+        ('PHARMACIEN', 'Pharmacien'),
+        ('SECRETAIRE_MEDICAL', 'Secrétaire médical'),
+        ('TECHNICIEN_LABORATOIRE', 'Technicien de laboratoire')
+    ]
+
+    utilisateur = models.OneToOneField(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        limit_choices_to={'type_utilisateur': 'PROFESSIONNEL'},
+        related_name='professionnel'
+    )
+    type_professionnel = models.CharField(max_length=22, choices=TYPE_PROFESSIONNEL_CHOICES)
+    num_licence = models.BigIntegerField(unique=True)
+    date_validation = models.DateField()
+    
+    def __str__(self):
+        return f"{self.utilisateur.get_name} - {self.get_type_professionnel_display()}"
+
+class Medecin(models.Model):
+    professionnel = models.OneToOneField(
+        Professionnel,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        limit_choices_to={'type_professionnel': 'MEDECIN'},
+        related_name='medecin'
+    )
+    numero_ordre = models.BigIntegerField(unique=True)
+    specialites = models.ManyToManyField(Specialite, related_name='medecins')
+    
+    def __str__(self):
+        return f"Dr. {self.professionnel.utilisateur.get_name}"
+
+class Admin(models.Model):
+    utilisateur = models.OneToOneField(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        limit_choices_to={'type_utilisateur': 'ADMIN'},
+        related_name='admin'
+    )
+    
+    def __str__(self):
+        return f"Admin: {self.utilisateur.get_name}"
+
+class Patient(models.Model):
+    utilisateur = models.OneToOneField(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        limit_choices_to={'type_utilisateur': 'PATIENT'},
+        related_name='patient'
+    )
+    numero_securite = models.BigIntegerField(unique=True)
+    
+    def __str__(self):
+        return f"Patient: {self.utilisateur.get_name}"
+
+class Appointment(models.Model):
+    STATUS_CHOICES = [
+        ('SCHEDULED', 'Programmé'),
+        ('CANCELLED', 'Annulé'),
+        ('COMPLETED', 'Terminé'),
+        ('ABSENT', 'Absent')
+    ]
+    
+    medecin = models.ForeignKey(Medecin, on_delete=models.CASCADE, related_name='appointments')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
+    date = models.DateField()
+    heure = models.TimeField()
+    motif = models.CharField(max_length=255, blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='SCHEDULED')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        unique_together = ('medecin', 'date', 'heure')
+    
+    def __str__(self):
+        return f"{self.medecin} - {self.patient} - {self.date} {self.heure}"

@@ -1,0 +1,1135 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dossier Patient - {{ patient.nom_complet }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* Couleurs */
+        :root {
+            --accent-color: #2ecc71;
+            --text-color: #333;
+            --text-light: #7f8c8d;
+            --gradient-start: #2c3e50;
+            --gradient-end: #00a8ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }     
+        
+        body {
+            height: 100vh;
+            background-color: #f5f7fa;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh; 
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 30px;
+        }
+
+        .sidebar-logo {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .sidebar-logo-icon {
+            margin-right: 10px;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: white;
+        }
+
+        .menu-icon {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            margin-left: 10px;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        
+        .btn:hover:before {
+            left: 0;
+        }
+
+        .btn-icon {
+            margin-right: 5px;
+        }
+
+        /* Patient file styles */
+        .patient-info-header {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .patient-photo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: var(--text-light);
+        }
+
+        .patient-basic-details {
+            flex: 1;
+        }
+
+        .patient-name {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .patient-id {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 10px;
+        }
+
+        .patient-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            padding: 15px;
+            background-color: #f5f7fa;
+            border-radius: 8px;
+            min-width: 120px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        /* Tabs for patient view */
+        .tabs-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #eaeaea;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: var(--gradient-end);
+            border-bottom-color: var(--gradient-end);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Personal info styles */
+        .patient-personal-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .info-group {
+            margin-bottom: 15px;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            color: var(--text-color);
+        }
+        
+        /* Medical history styles */
+        .medical-history-section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .medical-list {
+            list-style: none;
+        }
+
+        .medical-item {
+            padding: 10px;
+            background-color: #f5f7fa;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        /* Consultation styles */
+        .consultation-item {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .consultation-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .consultation-title {
+            font-weight: 500;
+        }
+
+        .consultation-date {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .consultation-details {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .consultation-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+
+        .consultation-status.urgent {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+        }
+
+        .consultation-status.completed {
+            background-color: rgba(46, 213, 115, 0.15);
+            color: #2ed573;
+        }
+
+        .consultation-status.pending {
+            background-color: rgba(255, 159, 67, 0.15);
+            color: #ff9f43;
+        }
+
+        /* Prescription styles */
+        .prescription-item {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .prescription-details {
+            margin-top: 10px;
+        }
+
+        .med-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eaeaea;
+            font-size: 14px;
+        }
+
+        .med-name {
+            font-weight: 500;
+        }
+
+        .med-dosage {
+            color: var(--text-light);
+        }
+
+        .prescription-actions {
+            margin-top: 15px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .print-prescription-btn {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            margin-left: 0;
+        }
+
+        /* Lab results styles */
+        .results-item {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .results-item-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .results-item-title {
+            font-weight: 500;
+        }
+
+        .results-item-date {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .results-table th, .results-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .results-table th {
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .abnormal {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        .file-preview {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-item {
+            width: 80px;
+            height: 80px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .preview-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .add-button {
+            margin-top: 15px;
+            background-color: #f5f7fa;
+            border: 1px dashed #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .add-button:hover {
+            background-color: #eaeaea;
+            border-color: var(--gradient-end);
+            color: var(--gradient-end);
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow: auto;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            animation: modalopen 0.3s;
+        }
+
+        @keyframes modalopen {
+            from {opacity: 0; transform: translateY(-50px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .close-modal {
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            color: var(--text-color);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .form-group input, 
+        .form-group textarea, 
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .patient-personal-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                padding: 0;
+                overflow: visible;
+            }
+            
+            .sidebar-header {
+                display: none;
+            }
+            
+            .sidebar-menu {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding: 10px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            
+            .sidebar-menu::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .menu-item {
+                flex-direction: column;
+                padding: 10px 15px;
+                min-width: 70px;
+                text-align: center;
+                font-size: 12px;
+            }
+            
+            .menu-icon {
+                margin-right: 0;
+                margin-bottom: 5px;
+                font-size: 18px;
+            }
+            
+            .menu-item.active::before {
+                width: 100%;
+                height: 3px;
+                top: auto;
+                bottom: 0;
+            }
+            
+            .main-content {
+                height: calc(100vh - 70px);
+                padding: 15px;
+                overflow-y: auto;
+            }
+
+            .patient-info-header {
+                flex-direction: column;
+            }
+
+            .patient-stats {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar" id="doctorAvatar">{{ request.user.first_name|first|upper }}</div>
+                <span class="sidebar-logo">Dr. {{ request.user.get_full_name }}</span>
+            </div>
+            <div class="sidebar-menu">
+                <a href="{% url 'medcin_dashboard' %}" class="menu-item">
+                    <span class="menu-icon">📊</span>
+                    <span>Tableau de bord</span>
+                </a>
+                
+                <a href="{% url 'medcin_profil' %}" class="menu-item">
+                    <span class="menu-icon">👤</span>
+                    <span>Mon Profil</span>
+                </a>
+                
+                <a href="{% url 'medcin_rdvmed' %}" class="menu-item">
+                    <span class="menu-icon">📅</span>
+                    <span>Rendez-vous</span>
+                </a>
+                
+                <a href="{% url 'medcin_patientl' %}" class="menu-item active">
+                    <span class="menu-icon">👥</span>
+                    <span>Patients</span>
+                </a>
+                
+                <a href="{% url 'medcin_examin' %}" class="menu-item">
+                    <span class="menu-icon">🔬</span>
+                    <span>Examens</span>
+                </a>
+                <a href="{% url 'logout' %}" class="menu-item">
+                    <span class="menu-icon">🚪</span>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-page active" id="patient-file-page">
+                <div class="page-header">
+                    <h1 class="page-title">Dossier Patient</h1>
+                    <div class="header-actions">
+                        <a href="{% url 'edit_patient' patient.id %}" class="btn">
+                            <span class="btn-icon">📝</span>
+                            Éditer
+                        </a>
+                        <button class="btn" id="printPatientBtn">
+                            <span class="btn-icon">🖨️</span>
+                            Imprimer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Patient Info Header -->
+                <div class="patient-info-header">
+                    <div class="patient-photo">
+                        {% if patient.photo %}
+                            <img src="{{ patient.photo.url }}" alt="Photo patient" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                        {% else %}
+                            👤
+                        {% endif %}
+                    </div>
+                    <div class="patient-basic-details">
+                        <h2 class="patient-name">{{ patient.nom_complet }}</h2>
+                        <div class="patient-id">
+                            N° {{ patient.numero_securite_sociale }} • 
+                            Né le {{ patient.date_naissance|date:"d/m/Y" }} • 
+                            {{ patient.get_sexe_display }}
+                        </div>
+                        <div class="patient-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">{{ patient.groupe_sanguin|default:"-" }}</div>
+                                <div class="stat-label">Groupe sanguin</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ patient.poids|default:"-" }} kg</div>
+                                <div class="stat-label">Poids</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ patient.taille|default:"-" }} cm</div>
+                                <div class="stat-label">Taille</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">{{ patient.tension_arterielle|default:"-" }}</div>
+                                <div class="stat-label">Tension</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Tabs -->
+                <div class="tabs-container">
+                    <div class="tabs">
+                        <div class="tab active" data-tab="personal-info">Informations personnelles</div>
+                        <div class="tab" data-tab="medical-history">Historique médical</div>
+                        <div class="tab" data-tab="consultations">Consultations</div>
+                        <div class="tab" data-tab="prescriptions">Prescriptions</div>
+                        <div class="tab" data-tab="lab-results">Résultats médicaux</div>
+                    </div>
+
+                    <!-- Personal Info Tab -->
+                    <div class="tab-content active" id="personal-info">
+                        <div class="patient-personal-info">
+                            <div>
+                                <div class="info-group">
+                                    <div class="info-label">Nom complet</div>
+                                    <div class="info-value">{{ patient.nom_complet }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Numéro sécurité sociale</div>
+                                    <div class="info-value">{{ patient.numero_securite_sociale }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Date de naissance</div>
+                                    <div class="info-value">{{ patient.date_naissance|date:"d/m/Y" }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Lieu de naissance</div>
+                                    <div class="info-value">{{ patient.lieu_naissance|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="info-group">
+                                    <div class="info-label">Adresse</div>
+                                    <div class="info-value">{{ patient.adresse_complete }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Téléphone</div>
+                                    <div class="info-value">{{ patient.telephone|default:"-" }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Email</div>
+                                    <div class="info-value">{{ patient.email|default:"-" }}</div>
+                                </div>
+                                <div class="info-group">
+                                    <div class="info-label">Contact d'urgence</div>
+                                    <div class="info-value">
+                                        {{ patient.contact_urgence_nom }} ({{ patient.contact_urgence_relation }}) - 
+                                        {{ patient.contact_urgence_telephone }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medical History Tab -->
+                    <div class="tab-content" id="medical-history">
+                        <div class="medical-history-section">
+                            <h3 class="section-title">Antécédents médicaux</h3>
+                            <ul class="medical-list">
+                                {% for antecedent in patient.antecedents_medicaux.all %}
+                                <li class="medical-item">
+                                    {{ antecedent.description }} 
+                                    {% if antecedent.date_decouverte %}({{ antecedent.date_decouverte|date:"Y" }}){% endif %}
+                                </li>
+                                {% empty %}
+                                <li class="medical-item">Aucun antécédent médical enregistré</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="medical-history-section">
+                            <h3 class="section-title">Antécédents familiaux</h3>
+                            <ul class="medical-list">
+                                {% for antecedent in patient.antecedents_familiaux.all %}
+                                <li class="medical-item">{{ antecedent.description }}</li>
+                                {% empty %}
+                                <li class="medical-item">Aucun antécédent familial enregistré</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="medical-history-section">
+                            <h3 class="section-title">Chirurgies</h3>
+                            <ul class="medical-list">
+                                {% for chirurgie in patient.chirurgies.all %}
+                                <li class="medical-item">
+                                    {{ chirurgie.description }} ({{ chirurgie.date|date:"d/m/Y" }})
+                                </li>
+                                {% empty %}
+                                <li class="medical-item">Aucune chirurgie enregistrée</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="medical-history-section">
+                            <h3 class="section-title">Allergies</h3>
+                            <ul class="medical-list">
+                                {% for allergie in patient.allergies.all %}
+                                <li class="medical-item">
+                                    {{ allergie.substance }} - {{ allergie.get_type_reaction_display }}
+                                </li>
+                                {% empty %}
+                                <li class="medical-item">Aucune allergie enregistrée</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="medical-history-section">
+                            <h3 class="section-title">Vaccinations</h3>
+                            <ul class="medical-list">
+                                {% for vaccination in patient.vaccinations.all %}
+                                <li class="medical-item">
+                                    {{ vaccination.vaccin.nom }} - {{ vaccination.date_administration|date:"d/m/Y" }}
+                                </li>
+                                {% empty %}
+                                <li class="medical-item">Aucune vaccination enregistrée</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="add-button">
+                            <a href="{% url 'add_medical_history' patient.id %}" class="btn">
+                                <span class="btn-icon">➕</span>
+                                Ajouter des informations médicales
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Consultations Tab -->
+                    <div class="tab-content" id="consultations">
+                        {% for consultation in consultations %}
+                        <div class="consultation-item">
+                            <div class="consultation-header">
+                                <div class="consultation-title">
+                                    {{ consultation.motif }}
+                                    <span class="consultation-status {{ consultation.statut|lower }}">
+                                        {{ consultation.get_statut_display }}
+                                    </span>
+                                </div>
+                                <div class="consultation-date">
+                                    {{ consultation.date|date:"d/m/Y" }} à {{ consultation.heure|time:"H:i" }}
+                                </div>
+                            </div>
+                            <div class="consultation-details">
+                                <p><strong>Motif :</strong> {{ consultation.motif }}</p>
+                                <p><strong>Observations :</strong> {{ consultation.observations }}</p>
+                                <p><strong>Diagnostic :</strong> {{ consultation.diagnostic }}</p>
+                                {% if consultation.traitement %}
+                                <p><strong>Traitement :</strong> {{ consultation.traitement }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="consultation-item">
+                            <p>Aucune consultation enregistrée</p>
+                        </div>
+                        {% endfor %}
+
+                        <div class="add-button">
+                            <a href="{% url 'add_consultation' patient.id %}" class="btn">
+                                <span class="btn-icon">➕</span>
+                                Ajouter une consultation
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Prescriptions Tab -->
+                    <div class="tab-content" id="prescriptions">
+                        {% for prescription in prescriptions %}
+                        <div class="prescription-item">
+                            <div class="consultation-header">
+                                <div class="consultation-title">
+                                    Ordonnance - {{ prescription.titre }}
+                                </div>
+                                <div class="consultation-date">
+                                    {{ prescription.date|date:"d/m/Y" }} (Valable {{ prescription.duree_validite }} mois)
+                                </div>
+                            </div>
+                            <div class="prescription-details">
+                                {% for medicament in prescription.medicaments.all %}
+                                <div class="med-item">
+                                    <div class="med-name">{{ medicament.nom }}</div>
+                                    <div class="med-dosage">{{ medicament.posologie }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="prescription-actions">
+                                <a href="{% url 'print_prescription' prescription.id %}" class="btn print-prescription-btn">
+                                    <span class="btn-icon">🖨️</span>
+                                    Imprimer PDF
+                                </a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="prescription-item">
+                            <p>Aucune prescription enregistrée</p>
+                        </div>
+                        {% endfor %}
+
+                        <div class="add-button">
+                            <a href="{% url 'add_prescription' patient.id %}" class="btn">
+                                <span class="btn-icon">➕</span>
+                                Créer une ordonnance
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Lab Results Tab -->
+                    <div class="tab-content" id="lab-results">
+                        {% for resultat in resultats_medicaux %}
+                        <div class="results-item">
+                            <div class="results-item-header">
+                                <div class="results-item-title">{{ resultat.type_examen }}</div>
+                                <div class="results-item-date">{{ resultat.date|date:"d/m/Y" }}</div>
+                            </div>
+                            
+                            {% if resultat.type_examen == "Bilan sanguin" %}
+                            <table class="results-table">
+                                <thead>
+                                    <tr>
+                                        <th>Test</th>
+                                        <th>Résultat</th>
+                                        <th>Unité</th>
+                                        <th>Valeurs normales</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for test in resultat.resultats_json %}
+                                    <tr {% if test.anormal %}class="abnormal"{% endif %}>
+                                        <td>{{ test.test }}</td>
+                                        <td>{{ test.resultat }}</td>
+                                        <td>{{ test.unite }}</td>
+                                        <td>{{ test.valeurs_normales }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p>{{ resultat.resume }}</p>
+                            {% endif %}
+                            
+                            {% if resultat.fichiers.all %}
+                            <div class="file-preview">
+                                {% for fichier in resultat.fichiers.all %}
+                                <a href="{{ fichier.fichier.url }}" target="_blank" class="preview-item">
+                                    {% if fichier.fichier.name|lower|slice:'-4:' == '.pdf' %}
+                                    📄
+                                    {% elif fichier.fichier.name|lower|slice:'-4:' == '.jpg' or fichier.fichier.name|lower|slice:'-5:' == '.jpeg' or fichier.fichier.name|lower|slice:'-4:' == '.png' %}
+                                    📷
+                                    {% else %}
+                                    📁
+                                    {% endif %}
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="results-item">
+                            <p>Aucun résultat médical enregistré</p>
+                        </div>
+                        {% endfor %}
+
+                        <div class="add-button">
+                            <a href="{% url 'add_lab_result' patient.id %}" class="btn">
+                                <span class="btn-icon">➕</span>
+                                Ajouter un résultat
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="printModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Options d'impression</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Sélectionnez ce que vous souhaitez imprimer :</p>
+                <div class="print-options">
+                    <button class="btn" id="printAllBtn">Tout le dossier</button>
+                    <button class="btn" id="printCurrentTabBtn">Onglet actuel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            // Print functionality
+            const printPatientBtn = document.getElementById('printPatientBtn');
+            const printModal = document.getElementById('printModal');
+            const closeModal = document.querySelector('.close-modal');
+            
+            printPatientBtn.addEventListener('click', () => {
+                printModal.style.display = 'block';
+            });
+            
+            closeModal.addEventListener('click', () => {
+                printModal.style.display = 'none';
+            });
+            
+            window.addEventListener('click', (e) => {
+                if (e.target === printModal) {
+                    printModal.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('printAllBtn').addEventListener('click', () => {
+                window.print();
+                printModal.style.display = 'none';
+            });
+            
+            document.getElementById('printCurrentTabBtn').addEventListener('click', () => {
+                const activeTab = document.querySelector('.tab-content.active');
+                const originalDisplay = activeTab.style.display;
+                
+                // Hide all other content
+                document.querySelectorAll('.tab-content').forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                
+                // Show only active tab
+                activeTab.style.display = 'block';
+                
+                // Print
+                window.print();
+                
+                // Restore original display
+                activeTab.style.display = originalDisplay;
+                printModal.style.display = 'none';
+            });
+
+            // File preview click
+            document.querySelectorAll('.preview-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    if (!this.getAttribute('href')) {
+                        e.preventDefault();
+                        alert("Prévisualisation du fichier");
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

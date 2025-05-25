@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Management | Patient Portal</title>
+    <link rel="stylesheet" type='text/css' href="{% static 'patient_portal.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    {% include "navbar.html" %}
+
+    <main>
+        <div class="patient-portal-container">
+            <div class="portal-header">
+                <h1 class="portal-title">Patient Portal</h1>
+                <p class="portal-subtitle">Your health management hub</p>
+            </div>
+            
+            <div class="options-grid">
+                <div class="option-card appointment-card">
+                    <div class="option-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h3>Book Appointment</h3>
+                    <p>Schedule with your preferred doctor</p>
+                    <a href="" class="option-btn">Book Now</a>
+                </div>
+                
+                <div class="option-card records-card">
+                    <div class="option-icon">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <h3>Medical Records</h3>
+                    <p>View your health history and reports</p>
+                    <a href="" class="option-btn">View Records</a>
+                </div>
+                
+                <div class="option-card prescription-card">
+                    <div class="option-icon">
+                        <i class="fas fa-prescription-bottle-alt"></i>
+                    </div>
+                    <h3>Prescriptions</h3>
+                    <p>Access your current medications</p>
+                    <a href="" class="option-btn">View Prescriptions</a>
+                </div>
+                
+                <div class="option-card billing-card">
+                    <div class="option-icon">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <h3>Billing</h3>
+                    <p>View and pay your medical bills</p>
+                    <a href="" class="option-btn">View Bills</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {% include "footer.html" %}
+</body>
+</html>

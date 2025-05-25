@@ -1,0 +1,963 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Hospitals - Liste des Patients</title>
+    <style>
+        /* Couleurs */
+        :root {
+            --accent-color: #2ecc71;
+            --text-color: #333;
+            --text-light: #7f8c8d;
+            --gradient-start: #2c3e50;
+            --gradient-end: #00a8ff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }     
+        
+        body {
+            height: 100vh;
+            background-color: #f5f7fa;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh; 
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 30px;
+        }
+
+        .sidebar-logo {
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .sidebar-logo-icon {
+            margin-right: 10px;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background-color: white;
+        }
+
+        .menu-icon {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .search-box {
+            position: relative;
+            margin-right: 10px;
+        }
+
+        .search-input {
+            padding: 8px 15px 8px 35px;
+            border: 1px solid #ddd;
+            border-radius: 50px;
+            font-size: 14px;
+            width: 200px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            width: 250px;
+            border-color: var(--gradient-end);
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 50px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-end), var(--gradient-start));
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        
+        .btn:hover:before {
+            left: 0;
+        }
+
+        .btn-icon {
+            margin-right: 5px;
+        }
+
+        /* Tables */
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .table-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 15px 10px;
+            border-bottom: 1px solid #eaeaea;
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        tbody td {
+            padding: 15px 10px;
+            border-bottom: 1px solid #eaeaea;
+            font-size: 14px;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status.urgent {
+            background-color: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+        }
+
+        .status.consultation {
+            background-color: rgba(46, 213, 115, 0.15);
+            color: #2ed573;
+        }
+
+        .status.suivi {
+            background-color: rgba(84, 160, 255, 0.15);
+            color: #54a0ff;
+        }
+
+        .status.attente {
+            background-color: rgba(255, 159, 67, 0.15);
+            color: #ff9f43;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--gradient-end);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            padding: 5px 8px;
+            border-radius: 4px;
+        }
+
+        .action-btn:hover {
+            color: var(--gradient-start);
+            background-color: rgba(0, 168, 255, 0.1);
+        }
+
+        .delete-btn {
+            color: #e74c3c;
+        }
+
+        .delete-btn:hover {
+            color: #c0392b;
+            background-color: rgba(231, 76, 60, 0.1);
+        }
+
+        /* Filters */
+        .filters-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .filter-label {
+            font-size: 14px;
+            margin-right: 8px;
+            color: var(--text-light);
+        }
+
+        .filter-select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            border-color: var(--gradient-end);
+            outline: none;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination-item {
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 3px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            border: 1px solid #ddd;
+            background-color: white;
+        }
+
+        .pagination-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .pagination-item.active {
+            background-color: var(--gradient-end);
+            color: white;
+            border-color: var(--gradient-end);
+        }
+
+        .pagination-item.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eaeaea;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-container {
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                padding: 0;
+                overflow: visible;
+            }
+            
+            .sidebar-header {
+                display: none;
+            }
+            
+            .sidebar-menu {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding: 10px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            
+            .sidebar-menu::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .menu-item {
+                flex-direction: column;
+                padding: 10px 15px;
+                min-width: 70px;
+                text-align: center;
+                font-size: 12px;
+            }
+            
+            .menu-icon {
+                margin-right: 0;
+                margin-bottom: 5px;
+                font-size: 18px;
+            }
+            
+            .menu-item.active::before {
+                width: 100%;
+                height: 3px;
+                top: auto;
+                bottom: 0;
+            }
+            
+            .main-content {
+                height: calc(100vh - 70px);
+                padding: 15px;
+                overflow-y: auto;
+            }
+            
+            .header-actions {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .search-box {
+                width: 100%;
+                margin-right: 0;
+            }
+            
+            .search-input {
+                width: 100%;
+            }
+
+            .filters-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .filter-group {
+                justify-content: space-between;
+            }
+
+            .filter-select {
+                flex: 1;
+                margin-left: 10px;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 700px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar" id="doctorAvatar">D</div>
+                <span class="sidebar-logo" onclick="window.location.href='infodc.html'">Dr. <span id="doctorName">Médecin</span></span>
+            </div>
+            <div class="sidebar-menu">
+                <a href="{% url 'medcin_dashboard' %}" class="menu-item" data-page="dashboard">
+                    <span class="menu-icon">📊</span>
+                    <span>Tableau de bord</span>
+                </a>
+                
+                <a href="{% url 'medcin_profil' %}" class="menu-item" data-page="profile">
+                    <span class="menu-icon">👤</span>
+                    <span>Mon Profil</span>
+                </a>
+                
+                <a href="{% url 'medcin_rdvmed' %}" class="menu-item" data-page="rdv">
+                    <span class="menu-icon">📅</span>
+                    <span>Rendez-vous</span>
+                </a>
+                
+                <a href="{% url 'medcin_patientl' %}" class="menu-item active" data-page="patients">
+                    <span class="menu-icon">👥</span>
+                    <span>Patients</span>
+                </a>
+                
+                <a href="{% url 'medcin_examin' %}" class="menu-item" data-page="examen">
+                    <span class="menu-icon">🔬</span>
+                    <span>Examens</span>
+                </a>
+                <a href="#" class="menu-item" id="logoutBtn">
+                    <span class="menu-icon">🚪</span>
+                    <span>Déconnexion</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Patients Page -->
+            <div class="content-page active" id="patients-page">
+                <div class="page-header">
+                    <h1 class="page-title">Liste des Patients</h1>
+                    <div class="header-actions">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" class="search-input" id="patientSearch" placeholder="Rechercher un patient...">
+                        </div>
+                        <button class="btn" id="addPatientBtn">
+                            <span class="btn-icon">➕</span>
+                            Ajouter un patient
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-container">
+                    <div class="filter-group">
+                        <span class="filter-label">Statut:</span>
+                        <select class="filter-select" id="statusFilter">
+                            <option value="all">Tous</option>
+                            <option value="suivi">Suivi</option>
+                            <option value="consultation">Consultation</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="attente">En attente</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Trier par:</span>
+                        <select class="filter-select" id="sortFilter">
+                            <option value="name">Nom</option>
+                            <option value="date">Date de dernière visite</option>
+                            <option value="age">Âge</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Afficher:</span>
+                        <select class="filter-select" id="showFilter">
+                            <option value="10">10 patients</option>
+                            <option value="25">25 patients</option>
+                            <option value="50">50 patients</option>
+                            <option value="all">Tous</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Patients Table -->
+                <div class="table-container">
+                    <table id="patientsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Date de naissance</th>
+                                <th>Téléphone</th>
+                                <th>Dernière visite</th>
+                                <th>Diagnostic</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for patient in patients %}
+                            <tr>
+                                <td>{{ patient.id }}</td>
+                                <td>{{ patient.nom }} {{ patient.prenom }}</td>
+                                <td>{{ patient.date_naissance|date:"d/m/Y" }}</td>
+                                <td>{{ patient.telephone }}</td>
+                                <td>{{ patient.derniere_visite|date:"d/m/Y"|default:"Jamais" }}</td>
+                                <td>{{ patient.diagnostic|default:"Aucun diagnostic" }}</td>
+                                <td><span class="status {{ patient.statut|lower }}">{{ patient.get_statut_display }}</span></td>
+                                <td>
+                                    <button class="action-btn view-patient" data-patient="{{ patient.id }}">👁️ Dossier</button>
+                                    <button class="action-btn delete-btn" data-patient="{{ patient.id }}">🗑️ Supprimer</button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                                    <div>
+                                        <div style="font-size: 48px; margin-bottom: 20px;">👥</div>
+                                        <h3>Aucun patient enregistré</h3>
+                                        <p>Commencez par ajouter votre premier patient.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    <!-- Empty state (hidden by default) -->
+                    <div class="empty-state" id="emptyState" style="display: none;">
+                        <div class="empty-state-icon">👥</div>
+                        <h3>Aucun patient trouvé</h3>
+                        <p>Aucun patient ne correspond à vos critères de recherche.</p>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="pagination-item" id="prevPage">«</div>
+                    <div class="pagination-item active" data-page="1">1</div>
+                    <div class="pagination-item" data-page="2">2</div>
+                    <div class="pagination-item" data-page="3">3</div>
+                    <div class="pagination-item" id="nextPage">»</div>
+                </div>
+            </div>
+        </div>
+    </div>
+   
+
+    <script>
+       // Redirection vers la page d'ajout de patient
+document.getElementById('addPatientBtn').addEventListener('click', function() {
+    window.location.href = "{% url 'medcin_add_patient' %}";
+});
+
+// Fermer les modals
+const closeButtons = document.querySelectorAll('.close-modal');
+closeButtons.forEach(button => {
+    button.addEventListener('click', function() {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.style.display = 'none';
+        });
+    });
+});
+
+// Fonctions de filtrage et de recherche
+document.getElementById('patientSearch').addEventListener('input', function() {
+    filterPatients();
+});
+
+document.getElementById('statusFilter').addEventListener('change', function() {
+    filterPatients();
+});
+
+document.getElementById('sortFilter').addEventListener('change', function() {
+    sortPatients();
+});
+
+// Filtre les patients basé sur le texte de recherche et le statut
+function filterPatients() {
+    const searchText = document.getElementById('patientSearch').value.toLowerCase();
+    const statusFilter = document.getElementById('statusFilter').value;
+    const rows = document.querySelectorAll('table tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        // Ignorer la ligne "empty state"
+        if (row.cells.length === 1) return;
+        
+        const name = row.cells[1].textContent.toLowerCase();
+        const statusElement = row.querySelector('.status');
+        const status = statusElement ? statusElement.textContent.toLowerCase() : '';
+        
+        const matchesSearch = name.includes(searchText);
+        const matchesStatus = statusFilter === 'all' || status.includes(statusFilter);
+        
+        if (matchesSearch && matchesStatus) {
+            row.style.display = '';
+            visibleCount++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Afficher/masquer l'état vide
+    const emptyState = document.getElementById('emptyState');
+    const table = document.getElementById('patientsTable');
+    if (visibleCount === 0 && searchText) {
+        table.style.display = 'none';
+        emptyState.style.display = 'block';
+    } else {
+        table.style.display = 'table';
+        emptyState.style.display = 'none';
+    }
+}
+
+// Trie les patients selon le critère choisi
+function sortPatients() {
+    const sortBy = document.getElementById('sortFilter').value;
+    const tbody = document.querySelector('table tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Filtrer les lignes avec des données valides (ignorer empty state)
+    const dataRows = rows.filter(row => row.cells.length > 1);
+    
+    dataRows.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch(sortBy) {
+            case 'name':
+                aValue = a.cells[1].textContent;
+                bValue = b.cells[1].textContent;
+                return aValue.localeCompare(bValue);
+            
+            case 'date':
+                const aDateText = a.cells[4].textContent;
+                const bDateText = b.cells[4].textContent;
+                
+                if (aDateText === 'Jamais') return 1;
+                if (bDateText === 'Jamais') return -1;
+                
+                aValue = new Date(aDateText.split('/').reverse().join('-'));
+                bValue = new Date(bDateText.split('/').reverse().join('-'));
+                return bValue - aValue; // Plus récent en premier
+            
+            case 'age':
+                aValue = new Date(a.cells[2].textContent.split('/').reverse().join('-'));
+                bValue = new Date(b.cells[2].textContent.split('/').reverse().join('-'));
+                return aValue - bValue; // Plus âgé en premier
+        }
+    });
+    
+    // Reconstruire le tableau
+    dataRows.forEach(row => tbody.appendChild(row));
+}
+
+// Gestion des boutons d'action
+function attachPatientEventListeners() {
+    // Boutons de suppression
+    document.querySelectorAll('.delete-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const patientId = this.getAttribute('data-patient');
+            document.getElementById('confirmDeletePatient').setAttribute('data-patient', patientId);
+            document.getElementById('deletePatientModal').style.display = 'flex';
+        });
+    });
+    
+    // Boutons de visualisation
+    document.querySelectorAll('.view-patient').forEach(button => {
+        button.addEventListener('click', function() {
+            const patientId = this.getAttribute('data-patient');
+            window.location.href = `{% url 'medcin_patient_detail' 0 %}`.replace('0', patientId);
+        });
+    });
+}
+
+// Annuler la suppression
+document.getElementById('cancelDeletePatient').addEventListener('click', function() {
+    document.getElementById('deletePatientModal').style.display = 'none';
+});
+
+// Confirmer la suppression
+document.getElementById('confirmDeletePatient').addEventListener('click', function() {
+    const patientId = this.getAttribute('data-patient');
+    
+    // Envoyer une requête AJAX pour supprimer le patient
+    fetch(`{% url 'medcin_delete_patient' 0 %}`.replace('0', patientId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Supprimer la ligne du tableau
+            const rows = document.querySelectorAll('table tbody tr');
+            rows.forEach(row => {
+                if (row.cells.length > 1 && row.cells[0].textContent === patientId) {
+                    row.remove();
+                }
+            });
+            
+            // Vérifier s'il reste des patients
+            const remainingRows = document.querySelectorAll('table tbody tr');
+            const hasPatients = Array.from(remainingRows).some(row => row.cells.length > 1);
+            
+            if (!hasPatients) {
+                location.reload(); // Recharger pour afficher l'état vide
+            }
+        } else {
+            alert('Erreur lors de la suppression du patient.');
+        }
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors de la suppression du patient.');
+    });
+    
+    document.getElementById('deletePatientModal').style.display = 'none';
+});
+
+// Pagination
+const paginationItems = document.querySelectorAll('.pagination-item[data-page]');
+paginationItems.forEach(item => {
+    item.addEventListener('click', function() {
+        const page = this.getAttribute('data-page');
+        
+        // Retirer la classe active de tous les items
+        paginationItems.forEach(i => i.classList.remove('active'));
+        // Ajouter la classe active à l'item cliqué
+        this.classList.add('active');
+        
+        // Rediriger vers la page avec le paramètre de pagination
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        window.location.href = url.toString();
+    });
+});
+
+// Navigation pagination précédent/suivant
+document.getElementById('prevPage').addEventListener('click', function() {
+    const currentPage = document.querySelector('.pagination-item.active');
+    const currentPageNum = parseInt(currentPage.getAttribute('data-page'));
+    if (currentPageNum > 1) {
+        const url = new URL(window.location);
+        url.searchParams.set('page', currentPageNum - 1);
+        window.location.href = url.toString();
+    }
+});
+
+document.getElementById('nextPage').addEventListener('click', function() {
+    const currentPage = document.querySelector('.pagination-item.active');
+    const currentPageNum = parseInt(currentPage.getAttribute('data-page'));
+    const url = new URL(window.location);
+    url.searchParams.set('page', currentPageNum + 1);
+    window.location.href = url.toString();
+});
+
+// Déconnexion
+document.getElementById('logoutBtn').addEventListener('click', function() {
+    window.location.href = "{% url 'logout' %}";
+});
+
+// Initialiser les écouteurs d'événements
+attachPatientEventListeners();
+
+// Récupérer et afficher les informations du médecin - VERSION CORRIGÉE
+let doctorName, doctorInitial;
+
+// Use Django template variables rendered server-side
+const isAuthenticated = "{{ user.is_authenticated|yesno:'true,false'|safe }}";
+if (isAuthenticated) {
+    const firstName = "{{ user.first_name|escapejs }}";
+    const lastName = "{{ user.last_name|escapejs }}";
+    const username = "{{ user.username|escapejs }}";
+    
+    doctorName = (firstName + " " + lastName).trim() || username;
+    doctorInitial = doctorName.charAt(0).toUpperCase();
+} else {
+    doctorName = 'Médecin';
+    doctorInitial = 'M';
+}
+
+document.getElementById('doctorName').textContent = doctorName;
+document.getElementById('doctorAvatar').textContent = doctorInitial;
+
+// Fermer les modals en cliquant à l'extérieur
+window.addEventListener('click', function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+});
+    </script>
+
+    <!-- Token CSRF pour les requêtes AJAX -->
+    {% csrf_token %}
+</body>
+</html>

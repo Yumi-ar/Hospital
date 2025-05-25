@@ -1,0 +1,159 @@
+{% extends 'doctorPages/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="content-page active" id="dashboard-page">
+    <div class="page-header">
+        <h1 class="page-title">Tableau de bord</h1>
+        <div class="header-actions">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" placeholder="Rechercher un patient..." id="patientSearch">
+            </div>
+        </div>
+    </div>
+
+    <!-- Widgets avec données dynamiques -->
+    <div class="widgets-container">
+        <div class="widget">
+            <div class="widget-header">
+                <div class="widget-title">Rendez-vous aujourd'hui</div>
+                <div class="widget-icon">📅</div>
+            </div>
+            <div class="widget-value">{{ appointments_count }}</div>
+            <div class="widget-subtitle">
+                {% if next_appointment %}
+                    Prochain: {{ next_appointment.time|time:"H:i" }} - {{ next_appointment.patient.full_name }}
+                {% else %}
+                    Aucun rendez-vous à venir
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div class="widget-header">
+                <div class="widget-title">Patients à suivre</div>
+                <div class="widget-icon">📋</div>
+            </div>
+            <div class="widget-value">{{ follow_up_patients }}</div>
+            <div class="widget-subtitle">
+                {% if recent_patients|length > 0 %}
+                    {{ recent_patients|length }} nouveaux cette semaine
+                {% else %}
+                    Aucun nouveau patient
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div class="widget-header">
+                <div class="widget-title">Examens en attente</div>
+                <div class="widget-icon">🔬</div>
+            </div>
+            <div class="widget-value">{{ pending_exams }}</div>
+            <div class="widget-subtitle">
+                {% if pending_exams > 0 %}
+                    À traiter rapidement
+                {% else %}
+                    Tous les examens sont à jour
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="widget">
+            <div class="widget-header">
+                <div class="widget-title">Ordonnances du jour</div>
+                <div class="widget-icon">💊</div>
+            </div>
+            <div class="widget-value">{{ today_prescriptions }}</div>
+            <div class="widget-subtitle">
+                {% if today_prescriptions > 0 %}
+                    À préparer pour les patients
+                {% else %}
+                    Aucune ordonnance aujourd'hui
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des rendez-vous dynamique -->
+    <div class="table-container">
+        <div class="table-header">
+            <h2 class="table-title">Rendez-vous du jour</h2>
+            <a href="{% url 'appointments_list' %}" class="action-btn">Voir tout</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Heure</th>
+                    <th>Patient</th>
+                    <th>Motif</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in today_appointments %}
+                <tr>
+                    <td>{{ appointment.time|time:"H:i" }}</td>
+                    <td>{{ appointment.patient.full_name }}</td>
+                    <td>{{ appointment.reason|truncatechars:30 }}</td>
+                    <td>
+                        <span class="status {{ appointment.status }}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'view_appointment' appointment.id %}" class="action-btn">Consulter</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">Aucun rendez-vous prévu aujourd'hui</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tableau des patients récents dynamique -->
+    <div class="table-container">
+        <div class="table-header">
+            <h2 class="table-title">Dossiers patients récents</h2>
+            <a href="{% url 'patient_list' %}" class="action-btn">Voir tout</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Dernière visite</th>
+                    <th>Diagnostic principal</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for patient in recent_patients %}
+                <tr>
+                    <td>{{ patient.full_name }}</td>
+                    <td>{{ patient.last_visit|date:"d/m/Y" }}</td>
+                    <td>{{ patient.main_diagnosis|default:"-"|truncatechars:30 }}</td>
+                    <td>
+                        <span class="status {% if patient.is_urgent %}urgent{% else %}suivi{% endif %}">
+                            {% if patient.is_urgent %}Urgent{% else %}Suivi{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'patient_detail' patient.id %}" class="action-btn">Dossier</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">Aucun patient récent</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

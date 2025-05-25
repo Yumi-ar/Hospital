@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        #container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        #form-container {
+            padding: 30px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        form {
+            display: none;
+        }
+        
+        form.visible {
+            display: block;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="email"],
+        input[type="password"],
+        input[type="submit"],
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        
+        input[type="submit"],
+        button {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        input[type="submit"]:hover,
+        button:hover {
+            transform: translateY(-2px);
+            transition: all 0.4s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+
+        }
+       
+        input[type="submit"]:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        #go-back {
+            background-color: #f44336;
+        }
+        
+        #go-back:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0 20px 0;
+        }
+        
+        li {
+            margin-bottom: 5px;
+            color: #777;
+        }
+        
+        li.complete {
+            color: #4CAF50;
+        }
+        
+        li.error {
+            color: #f44336;
+        }
+        
+        #all-done {
+            text-align: center;
+            font-size: 24px;
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .password-wrapper {
+            position: relative;
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 12px;
+            cursor: pointer;
+            color: #777;
+        }
+        
+        .clear {
+            clear: both;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="middle">
+            <div class="middle">
+                <div id="form-container">
+                    <h2>Reset your password</h2>
+                    
+                    <div id="all-done">All done! Your password has been reset.</div>
+                    
+                    <!-- Email Verification Form -->
+                    <form id="email-form" class="visible">
+                        <label for="email">Enter your email address</label>
+                        <input placeholder="Your registered email" type="email" id="email" name="email" required>
+                        <input type="submit" id="email-submit" value="Send Reset Link">
+                    </form>
+                    
+                    <!-- New Password Form -->
+                    <form id="new-password">
+                        <label for="password">Choose a new password</label>
+                        <div class="password-wrapper">
+                            <input placeholder="Enter your password" type="password" id="password" name="password" required>
+                            <span class="toggle-password" onclick="togglePassword('password')"></span>
+
+                        </div>
+                        <input type="submit" id="password-submit" value="Next">
+                        <br class="clear">
+                        <ul>
+                            <li id="eight-plus">At least 6 characters long.</li>
+                            <li id="uppercase">Contains uppercase letters.</li>
+                            <li id="lowercase">Contains lowercase letters.</li>
+                            <li id="numbers">Contains numbers.</li>
+                        </ul>
+                    </form>
+                    
+                    <!-- Verify Password Form -->
+                    <form id="verify-new-password">
+                        <label for="verify-password">Verify your password</label>
+                        <div class="password-wrapper">
+                            <input placeholder="Enter your password again" type="password" id="verify-password" name="password-to-verify" required>
+                            <span class="toggle-password" onclick="togglePassword('verify-password')"></span>
+                        </div>
+                        <ul>
+                            <li id="matches-password">Matches new password.</li>
+                        </ul>
+                        <input type="submit" id="verify-password-submit" value="Confirm password" disabled>
+                        <button id="go-back">Go back</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const emailForm = document.getElementById('email-form');
+        const newPasswordForm = document.getElementById('new-password');
+        const verifyPasswordForm = document.getElementById('verify-new-password');
+        const allDoneMessage = document.getElementById('all-done');
+        const passwordInput = document.getElementById('password');
+        const verifyPasswordInput = document.getElementById('verify-password');
+        const goBackButton = document.getElementById('go-back');
+        
+        // Password requirements elements
+        const eightPlus = document.getElementById('eight-plus');
+        const uppercase = document.getElementById('uppercase');
+        const lowercase = document.getElementById('lowercase');
+        const numbers = document.getElementById('numbers');
+        const matchesPassword = document.getElementById('matches-password');
+        
+        // Form submission handlers
+        emailForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            // real app, send the email to server
+            emailForm.classList.remove('visible');
+            newPasswordForm.classList.add('visible');
+        });
+        
+        newPasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (validatePassword(passwordInput.value)) {
+                newPasswordForm.classList.remove('visible');
+                verifyPasswordForm.classList.add('visible');
+            }
+        });
+        
+        verifyPasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (passwordInput.value === verifyPasswordInput.value) {
+                verifyPasswordForm.classList.remove('visible');
+                allDoneMessage.style.display = 'block';
+                
+                // send the new password to the server 
+                console.log('Password reset successful!');
+            }
+        });
+        
+        goBackButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            verifyPasswordForm.classList.remove('visible');
+            newPasswordForm.classList.add('visible');
+        });
+        
+        // Password validation
+        passwordInput.addEventListener('input', function() {
+            const password = passwordInput.value;
+            validatePassword(password);
+        });
+        
+        verifyPasswordInput.addEventListener('input', function() {
+            const verifyPassword = verifyPasswordInput.value;
+            const password = passwordInput.value;
+            
+            if (verifyPassword === password && verifyPassword !== '') {
+                matchesPassword.classList.add('complete');
+                matchesPassword.classList.remove('error');
+                document.getElementById('verify-password-submit').disabled = false;
+            } else {
+                matchesPassword.classList.remove('complete');
+                matchesPassword.classList.add('error');
+                document.getElementById('verify-password-submit').disabled = true;
+            }
+        });
+        
+        function validatePassword(password) {
+            // Validate length
+            if (password.length >= 6) {
+                eightPlus.classList.add('complete');
+                eightPlus.classList.remove('error');
+            } else {
+                eightPlus.classList.remove('complete');
+                eightPlus.classList.add('error');
+            }
+            
+            // Validate uppercase
+            if (/[A-Z]/.test(password)) {
+                uppercase.classList.add('complete');
+                uppercase.classList.remove('error');
+            } else {
+                uppercase.classList.remove('complete');
+                uppercase.classList.add('error');
+            }
+            
+            // Validate lowercase
+            if (/[a-z]/.test(password)) {
+                lowercase.classList.add('complete');
+                lowercase.classList.remove('error');
+            } else {
+                lowercase.classList.remove('complete');
+                lowercase.classList.add('error');
+            }
+            
+            // Validate numbers
+            if (/\d/.test(password)) {
+                numbers.classList.add('complete');
+                numbers.classList.remove('error');
+            } else {
+                numbers.classList.remove('complete');
+                numbers.classList.add('error');
+            }
+            
+            // Return true if all requirements are met
+            return (
+                password.length >= 6 &&
+                /[A-Z]/.test(password) &&
+                /[a-z]/.test(password) &&
+                /\d/.test(password)
+            );
+        }
+        
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field.type === 'password') {
+                field.type = 'text';
+            } else {
+                field.type = 'password';
+            }
+        }
+    </script>
+</body>
+</html>
