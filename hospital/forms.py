@@ -17,12 +17,12 @@ class Personne(forms.Form):
     first_name = forms.CharField(
         max_length=30,
         widget=forms.TextInput(attrs={'placeholder': 'First Name', 'class': 'form-control'}),
-        label='First Name'
+        label='Enter First Name'
     )
     last_name = forms.CharField(
         max_length=30,
         widget=forms.TextInput(attrs={'placeholder': 'Last Name', 'class': 'form-control'}),
-        label='Last Name'
+        label='Enter Last Name'
     )
     dob = forms.DateField(
         widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -52,12 +52,12 @@ class Personne(forms.Form):
     )
     emails = forms.CharField(
         widget=forms.HiddenInput(),
-        required=False,
+        required=True,
         initial='[]'
     )
     phones = forms.CharField(
         widget=forms.HiddenInput(),
-        required=False,
+        required=True,
         initial='[]'
     )  
     password = forms.CharField(
@@ -78,6 +78,33 @@ class Personne(forms.Form):
         label='Confirm Password',
     )
 
+    def clean_first_name(self):
+        first_name = self.cleaned_data.get('first_name')
+        if not re.match(r'^[a-zA-ZÀ-ÿ\s]+$', first_name):
+            raise ValidationError("First name should only contain letters and spaces.")
+        return first_name.strip().title()
+
+    def clean_last_name(self):
+        last_name = self.cleaned_data.get('last_name')
+        if not re.match(r'^[a-zA-ZÀ-ÿ\s]+$', last_name):
+            raise ValidationError("Last name should only contain letters and spaces.")
+        return last_name.strip().title()
+
+    def clean_dob(self):
+        from datetime import date, timedelta
+        dob = self.cleaned_data.get('dob')
+        if dob:
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            
+            if age < 18:
+                raise ValidationError("Administrator must be at least 18 years old.")
+            if age > 100:
+                raise ValidationError("Please enter a valid birth date.")
+            if dob > today:
+                raise ValidationError("Birth date cannot be in the future.")
+        return dob
+
     def clean_password(self):
         password = self.cleaned_data.get('password')
         
@@ -97,25 +124,6 @@ class Personne(forms.Form):
             raise ValidationError("Password must contain at least one number.")
         
         return password
-
-    def clean_emails(self):
-        emails_json = self.cleaned_data.get('emails', '[]')
-        try:
-            emails_list = json.loads(emails_json)
-            
-            if not emails_list:
-                raise ValidationError("At least one email address is required.")
-            
-            for email in emails_list:
-                if not re.match(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', email):
-                    raise ValidationError(f"Invalid email format: {email}")
-            
-            if len(emails_list) != len(set(emails_list)):
-                raise ValidationError("Duplicate email addresses are not allowed.")
-                
-            return emails_list
-        except json.JSONDecodeError:
-            raise ValidationError("Invalid email data format.")
 
     def clean_phones(self):
         phones_json = self.cleaned_data.get('phones', '[]')
@@ -166,11 +174,13 @@ class Personne(forms.Form):
             self.fields['region'].required = False
 
 
-class AdminSignupForm(Personne):
+
+
+class AdminSignupForm(BaseSignupForm):
     pass
 
 
-class DoctorSignupForm(Personne):
+class DoctorSignupForm(BaseSignupForm):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
@@ -194,7 +204,7 @@ class DoctorSignupForm(Personne):
     )
     
 
-class PatientSignupForm(Personne):
+class PatientSignupForm(BaseSignupForm):
     code_postal = forms.IntegerField(
         widget=forms.TextInput(attrs={'placeholder': 'Code Postal', 'class': 'form-control'}),
         required=True,
@@ -215,7 +225,7 @@ class PatientSignupForm(Personne):
     )
 
 
-class NurseSignupForm(Personne):
+class NurseSignupForm(BaseSignupForm):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
@@ -332,13 +342,68 @@ PrescriptionFormSet = inlineformset_factory(
     validate_min=True,
 )
 
+class ContactForm(forms.Form):
+    name = forms.CharField(
+        max_length=50,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'id': 'name',
+            'placeholder': 'Enter your full name',
+            'required': True
+        }),
+        error_messages={
+            'required': 'Please enter your name.',
+            'max_length': 'Name must be less than 100 characters.'
+        }
+    )
+    
+    email = forms.EmailField(
+        validators=[EmailValidator()],
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'id': 'email',
+            'placeholder': 'Enter your email address',
+            'required': True
+        }),
+        error_messages={
+            'required': 'Please enter your email address.',
+            'invalid': 'Please enter a valid email address.'
+        }
+    )
+    
+    subject = forms.CharField(
+        max_length=500,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'id': 'subject',
+            'placeholder': 'Enter the subject of your message',
+            'required': True
+        }),
+    )
+    
+    message = forms.CharField(
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'id': 'message',
+            'placeholder': 'Enter your message here...',
+            'rows': 6,
+            'required': True
+        }),
+        error_messages={
+            'required': 'Please enter your message.'
+        }
+    )
+    
+    def clean_message(self):
+        message = self.cleaned_data.get('message')
+        if message:
+            message = message.strip()
+            
+            if len(message) < 5:
+                raise ValidationError("Message must be at least 5 characters long.")
+            
+            if len(message) > 1000:
+                raise ValidationError("Message must be less than 1000 characters long.")
+                
+        return message
 
-
-
-
-
-
-class ContactusForm(forms.Form):
-    Name = forms.CharField(max_length=30)
-    Email = forms.EmailField()
-    Message = forms.CharField(max_length=500,widget=forms.Textarea(attrs={'rows': 3, 'cols': 30}))
