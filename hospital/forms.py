@@ -13,7 +13,7 @@ def validate_license_number(value):
         raise ValidationError('The license number must contain at least 5 alphanumeric characters.')
 
 
-class BaseSignupForm(forms.Form):
+class Personne(forms.Form):
     first_name = forms.CharField(
         max_length=30,
         widget=forms.TextInput(attrs={'placeholder': 'First Name', 'class': 'form-control'}),
@@ -166,11 +166,11 @@ class BaseSignupForm(forms.Form):
             self.fields['region'].required = False
 
 
-class AdminSignupForm(BaseSignupForm):
+class AdminSignupForm(Personne):
     pass
 
 
-class DoctorSignupForm(BaseSignupForm):
+class DoctorSignupForm(Personne):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
@@ -194,7 +194,7 @@ class DoctorSignupForm(BaseSignupForm):
     )
     
 
-class PatientSignupForm(BaseSignupForm):
+class PatientSignupForm(Personne):
     code_postal = forms.IntegerField(
         widget=forms.TextInput(attrs={'placeholder': 'Code Postal', 'class': 'form-control'}),
         required=True,
@@ -215,7 +215,7 @@ class PatientSignupForm(BaseSignupForm):
     )
 
 
-class NurseSignupForm(BaseSignupForm):
+class NurseSignupForm(Personne):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
