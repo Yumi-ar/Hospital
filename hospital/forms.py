@@ -176,11 +176,11 @@ class Personne(forms.Form):
 
 
 
-class AdminSignupForm(BaseSignupForm):
+class AdminSignupForm(Personne):
     pass
 
 
-class DoctorSignupForm(BaseSignupForm):
+class DoctorSignupForm(Personne):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
@@ -204,7 +204,7 @@ class DoctorSignupForm(BaseSignupForm):
     )
     
 
-class PatientSignupForm(BaseSignupForm):
+class PatientSignupForm(Personne):
     code_postal = forms.IntegerField(
         widget=forms.TextInput(attrs={'placeholder': 'Code Postal', 'class': 'form-control'}),
         required=True,
@@ -225,7 +225,7 @@ class PatientSignupForm(BaseSignupForm):
     )
 
 
-class NurseSignupForm(BaseSignupForm):
+class NurseSignupForm(Personne):
     license_number = forms.CharField(
         max_length=20,
         widget=forms.TextInput(attrs={'placeholder': 'License Number', 'class': 'form-control'}),
