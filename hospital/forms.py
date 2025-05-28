@@ -1,6 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import EmailValidator, MinValueValidator, MaxValueValidator
 from .choices import COUNTRY_CHOICES, GENDER_CHOICES, COUNTRY_REGION_CHOICES, Departments, BLOOD_GROUP_CHOICES
 from django.forms import inlineformset_factory
 from .models import Ordonnance, Prescription, Patient
@@ -44,16 +44,16 @@ class Personne(forms.Form):
     region = forms.ChoiceField(
         choices=[('', '--- Select Region ---')],
         label="Region", 
-        required=False,
         widget=forms.Select(attrs={
             'class': 'form-control',
-            'id': 'id_region'
+            'id': 'id_region',
+            'disabled': 'disabled'
         })
     )
-    emails = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=True,
-        initial='[]'
+    email = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'Enter Email', 'class': 'form-control'}),
+        label='Email',
+        required=True
     )
     phones = forms.CharField(
         widget=forms.HiddenInput(),
@@ -125,6 +125,14 @@ class Personne(forms.Form):
         
         return password
 
+    def clean_email(self):
+        from django.contrib.auth.models import User
+        email = self.cleaned_data.get('email')
+        if email:
+            if User.objects.filter(email=email).exists():
+                raise ValidationError("This email address is already registered.")
+        return email
+
     def clean_phones(self):
         phones_json = self.cleaned_data.get('phones', '[]')
         try:
@@ -159,12 +167,10 @@ class Personne(forms.Form):
         self.fields['region'].choices = [('', '--- Select Region ---')]
         self.fields['region'].required = False
         country = None
-        
         if 'country' in self.data: 
             country = self.data.get('country')
         elif 'country' in self.initial:  
             country = self.initial.get('country')
-
         # Set the region choices based on the selected country
         if country in COUNTRY_REGION_CHOICES:
             self.fields['region'].choices = COUNTRY_REGION_CHOICES[country]
@@ -172,8 +178,6 @@ class Personne(forms.Form):
         else:
             self.fields['region'].choices = [('', '--- Select Region ---')]
             self.fields['region'].required = False
-
-
 
 
 class AdminSignupForm(Personne):
