@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('loginForm');
-    const usernameField = document.getElementById('usernameField'); // Updated ID
-    const passwordField = document.getElementById('passwordField'); // Updated ID
-    const togglePassword = document.getElementById('togglePassword'); // Updated ID
+    const usernameField = document.getElementById('usernameField'); 
+    const passwordField = document.getElementById('passwordField'); 
+    const togglePassword = document.getElementById('togglePassword');
     
     // Toggle password visibility
     if (togglePassword && passwordField) {
@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', function() {
         passwordField.addEventListener('blur', validatePassword);
     }
     
-    // Form submission handling
     if (loginForm) {
         loginForm.addEventListener('submit', function(e) {
             let isValid = true;
@@ -59,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
                 
-                // Re-enable button after 5 seconds to prevent getting stuck
+               
                 setTimeout(() => {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
@@ -68,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Validation functions
+  
     function validateUsername() {
         if (!usernameField) return true;
         
@@ -85,16 +84,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if empty
         if (value === '') {
-            showError(usernameField, errorElement, 'Email or phone is required.');
+            showError(usernameField, errorElement, 'Email is required.');
             return false;
         }
         
-        // Check format (email or phone)
+        // Check format (email)
         const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-        const isPhone = /^\+?[\d\s\-\(\)]{7,20}$/.test(value);
-        
-        if (!isEmail && !isPhone) {
-            showError(usernameField, errorElement, 'Please enter a valid email or phone number.');
+
+        if (!isEmail) {
+            showError(usernameField, errorElement, 'Please enter a valid email.');
             return false;
         }
         
@@ -181,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <span>${message}</span>
         `;
         
-        // Insert at the top of the form
+        
         loginForm.insertBefore(errorBox, loginForm.firstChild);
         
         // Auto-hide after 8 seconds
@@ -197,7 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 8000);
     }
     
-    // Handle server-side messages (hide them after a delay)
+    
     function handleServerMessages() {
         const serverMessages = document.querySelectorAll('.alert-danger, .alert-success');
         
@@ -218,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     
-    handleServerMessages(); // Initialize server message handling
+    handleServerMessages();
     
     
     const style = document.createElement('style');

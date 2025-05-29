@@ -157,50 +157,39 @@ function updateRemoveButtons(groupId) {
 document.addEventListener('DOMContentLoaded', function() {
     const countrySelect = document.querySelector('select[name="country"]');
     const regionSelect = document.querySelector('select[name="region"]');
-    const regionDataElement = document.getElementById('country-region-data');
 
-    if (countrySelect && regionSelect && regionDataElement) {
-        let regionData;
-        
-        try {
-            regionData = JSON.parse(regionDataElement.textContent);
-            console.log('Region data loaded:', regionData);
-        } catch (e) {
-            console.error('Error parsing region data:', e);
-            return;
-        }
-
+    if (countrySelect && regionSelect) {
         countrySelect.addEventListener('change', function() {
             const selectedCountry = this.value;
-            console.log('Country selected:', selectedCountry);
             
-            // Clear existing options
-            regionSelect.innerHTML = '';
+            // Clear existing options except the first one
+            regionSelect.innerHTML = '<option value="">--- Select Region ---</option>';
             
-            if (selectedCountry && regionData[selectedCountry]) {
-                // Enable the region select
-                regionSelect.disabled = false;
-                
-                // Add country-specific regions
-                regionData[selectedCountry].forEach(region => {
-                    const option = document.createElement('option');
-                    option.value = region[0];
-                    option.textContent = region[1];
-                    regionSelect.appendChild(option);
-                });
-                
-                console.log('Regions loaded for', selectedCountry, ':', regionData[selectedCountry]);
+            if (selectedCountry) {
+                // Fetch regions via AJAX
+                fetch(`/get-regions/?country_code=${selectedCountry}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.regions.length > 0) {
+                            regionSelect.disabled = false;
+                            
+                            // Add regions to select
+                            data.regions.forEach(region => {
+                                const option = document.createElement('option');
+                                option.value = region.value;
+                                option.textContent = region.text;
+                                regionSelect.appendChild(option);
+                            });
+                        } else {
+                            regionSelect.disabled = true;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching regions:', error);
+                        regionSelect.disabled = true;
+                    });
             } else {
-                // Disable the region select if no country is selected or no regions available
                 regionSelect.disabled = true;
-                
-                // Add a default option
-                const defaultOption = document.createElement('option');
-                defaultOption.value = '';
-                defaultOption.textContent = '--- Select Region ---';
-                regionSelect.appendChild(defaultOption);
-                
-                console.log('No regions available for country:', selectedCountry);
             }
         });
 
@@ -208,59 +197,138 @@ document.addEventListener('DOMContentLoaded', function() {
         if (countrySelect.value) {
             countrySelect.dispatchEvent(new Event('change'));
         }
-    } else {
-        console.error('Required elements not found:', {
-            countrySelect: !!countrySelect,
-            regionSelect: !!regionSelect,
-            regionDataElement: !!regionDataElement
-        });
     }
-    
-    // Collect emails and phones before form submission
+
     const form = document.getElementById('adminRegistrationForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            // Collect emails
-            const emailInputs = document.querySelectorAll('.email-input');
-            const emails = [];
-            emailInputs.forEach(input => {
-                if (input.value.trim()) {
-                    emails.push(input.value.trim());
-                }
-            });
-            
-            // Collect phones
-            const phoneInputs = document.querySelectorAll('.phone-input');
-            const phones = [];
-            phoneInputs.forEach(input => {
-                if (input.value.trim()) {
-                    phones.push(input.value.trim());
-                }
-            });
-            
-            // Update hidden fields
-            const emailsField = document.querySelector('input[name="emails"]');
-            const phonesField = document.querySelector('input[name="phones"]');
-            
-            if (emailsField) {
-                emailsField.value = JSON.stringify(emails);
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    // Collect phones
+                    const phoneInputs = document.querySelectorAll('.phone-input');
+                    const phones = [];
+                    phoneInputs.forEach(input => {
+                        if (input.value.trim()) {
+                            phones.push(input.value.trim());
+                        }
+                    });
+                    
+                    const phonesField = document.querySelector('input[name="phones"]');
+                    if (phonesField) {
+                        phonesField.value = JSON.stringify(phones);
+                    }
+                    
+                    // Show loading spinner
+                    const submitBtn = this.querySelector('.submit-btn');
+                    const spinner = submitBtn.querySelector('.loading-spinner');
+                    
+                    if (submitBtn && spinner) {
+                        submitBtn.disabled = true;
+                        spinner.style.display = 'block';
+                    }
+                });
             }
-            
-            if (phonesField) {
-                phonesField.value = JSON.stringify(phones);
-            }
-            
-            console.log('Emails collected:', emails);
-            console.log('Phones collected:', phones);
-            
-            // Show loading spinner
-            const submitBtn = this.querySelector('.submit-btn');
-            const spinner = submitBtn.querySelector('.loading-spinner');
-            
-            if (submitBtn && spinner) {
-                submitBtn.disabled = true;
-                spinner.style.display = 'block';
-            }
-        });
-    }
 });
+
+
+
+
+
+
+
+// // Country-Region dynamic update
+// document.addEventListener('DOMContentLoaded', function() {
+//     const countrySelect = document.querySelector('select[name="country"]');
+//     const regionSelect = document.querySelector('select[name="region"]');
+//     const regionDataElement = document.getElementById('country-region-data');
+
+//     if (countrySelect && regionSelect && regionDataElement) {
+//         let regionData;
+        
+//         try {
+//             regionData = JSON.parse(regionDataElement.textContent);
+//             console.log('Region data loaded:', regionData);
+//         } catch (e) {
+//             console.error('Error parsing region data:', e);
+//             return;
+//         }
+
+//         countrySelect.addEventListener('change', function() {
+//             const selectedCountry = this.value;
+//             console.log('Country selected:', selectedCountry);
+            
+//             // Clear existing options
+//             regionSelect.innerHTML = '';
+            
+//             if (selectedCountry && regionData[selectedCountry]) {
+//                 // Enable the region select
+//                 regionSelect.disabled = false;
+                
+//                 // Add country-specific regions
+//                 regionData[selectedCountry].forEach(region => {
+//                     const option = document.createElement('option');
+//                     option.value = region[0];
+//                     option.textContent = region[1];
+//                     regionSelect.appendChild(option);
+//                 });
+                
+//                 console.log('Regions loaded for', selectedCountry, ':', regionData[selectedCountry]);
+//             } else {
+//                 // Disable the region select if no country is selected or no regions available
+//                 regionSelect.disabled = true;
+                
+//                 // Add a default option
+//                 const defaultOption = document.createElement('option');
+//                 defaultOption.value = '';
+//                 defaultOption.textContent = '--- Select Region ---';
+//                 regionSelect.appendChild(defaultOption);
+                
+//                 console.log('No regions available for country:', selectedCountry);
+//             }
+//         });
+
+//         // Trigger change event on page load if country is already selected
+//         if (countrySelect.value) {
+//             countrySelect.dispatchEvent(new Event('change'));
+//         }
+//     } else {
+//         console.error('Required elements not found:', {
+//             countrySelect: !!countrySelect,
+//             regionSelect: !!regionSelect,
+//             regionDataElement: !!regionDataElement
+//         });
+//     }
+    
+//     // Collect emails and phones before form submission
+//     const form = document.getElementById('adminRegistrationForm');
+//     if (form) {
+//         form.addEventListener('submit', function(e) {
+            
+//             // Collect phones
+//             const phoneInputs = document.querySelectorAll('.phone-input');
+//             const phones = [];
+//             phoneInputs.forEach(input => {
+//                 if (input.value.trim()) {
+//                     phones.push(input.value.trim());
+//                 }
+//             });
+            
+            
+//             const phonesField = document.querySelector('input[name="phones"]');
+            
+            
+//             if (phonesField) {
+//                 phonesField.value = JSON.stringify(phones);
+//             }
+            
+//             console.log('Phones collected:', phones);
+            
+//             // Show loading spinner
+//             const submitBtn = this.querySelector('.submit-btn');
+//             const spinner = submitBtn.querySelector('.loading-spinner');
+            
+//             if (submitBtn && spinner) {
+//                 submitBtn.disabled = true;
+//                 spinner.style.display = 'block';
+//             }
+//         });
+//     }
+// });

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Hospitals - Admin Dashboard</title>
+    <link rel="stylesheet" type='text/css' href="{% static 'admin/css/dashstyle.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar" id="adminAvatar">A</div>
+                <span class="sidebar-logo">Admin <span id="adminName">{{request.user.first_name}}</span></span>
+            </div>
+            <div class="sidebar-menu">
+                <a href="#" class="menu-item active">
+                    <span class="menu-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon"><i class="fa fa-user-md" aria-hidden="true"></i>👨‍⚕️</span>
+                    <span>Doctors</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">🧑‍⚕️</span>
+                    <span>Nurses</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">🛏️</span>
+                    <span>Patients</span>
+                </a>
+                <a href="{% url 'adminlogin' %}" class="menu-item" id="logoutBtn">
+                    <span class="menu-icon">🚪</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+            
+        </div>
+
+        <div class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <!-- ... (Header actions remain unchanged) ... -->
+                </div>
+            </div>
+
+            <!-- Widgets -->
+            <!-- ... (Widgets remain unchanged) ... -->
+
+
+            <div class="tables-section" style="padding: 20px; display: flex; gap: 5%; flex-wrap: wrap;">
+                <div class="table-box" style="flex: 1; min-width: 400px;">
+                    <h2 style="text-align:center; margin-bottom: 15px;">Recent Doctors</h2>
+                    <table class="table table-hover" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Speciality</th>
+                                <th>Country</th>
+                                <th>Gender</th>
+                                <th>Mobile</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in doctors %}
+                            <tr>
+                                <td>{{ d.get_name }}</td>
+                                <td>{{ d.department }}</td>
+                                <td>{{ d.speciality }}</td>
+                                <td>{{ d.country }}</td>
+                                <td>{{ d.gender }}</td>
+                                <td>{{ d.mobile }}</td>
+                                <td>
+                                    {% if d.status %}
+                                        <span style="color: white; background-color: #007bff; padding: 4px 8px; border-radius: 4px;">Permanent</span>
+                                    {% else %}
+                                        <span style="color: white; background-color: #28a745; padding: 4px 8px; border-radius: 4px;">On Hold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-box" style="flex: 1; min-width: 500px;">
+                    <h2 style="text-align:center; margin-bottom: 15px;">Recent Patients</h2>
+                    <table class="table table-hover" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th>Name</th>
+                                <th>Gender</th>
+                                <th>Country</th>
+                                <th>Sang</th>
+                                <th>Mobile</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in patients %}
+                            <tr>
+                                <td>{{ p.get_name }}</td>
+                                <td>{{ p.gender }}</td>
+                                <td>{{ p.country }}</td>
+                                <td>{{ p.groupe_sanguin }}</td>
+                                <td>{{ p.mobile }}</td>
+                                <td>
+                                    {% if p.status %}
+                                        <span style="color: white; background-color: #007bff; padding: 4px 8px; border-radius: 4px;">Admitted</span>
+                                    {% else %}
+                                        <span style="color: white; background-color: #28a745; padding: 4px 8px; border-radius: 4px;">On Hold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-box" style="flex: 1; min-width: 500px;">
+                    <h2 style="text-align:center; margin-bottom: 15px;">Recent Nurses</h2>
+                    <table class="table table-hover" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f0f0f0;">
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Speciality</th>
+                                <th>Country</th>
+                                <th>Gender</th>
+                                <th>Mobile</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for n in nurses %}
+                            <tr>
+                                <td>{{ n.get_name }}</td>
+                                <td>{{ n.department }}</td>
+                                <td>{{ n.speciality }}</td>
+                                <td>{{ n.country }}</td>
+                                <td>{{ n.gender }}</td>
+                                <td>{{ n.mobile }}</td>
+                                <td>
+                                    {% if d.status %}
+                                        <span style="color: white; background-color: #007bff; padding: 4px 8px; border-radius: 4px;">Permanent</span>
+                                    {% else %}
+                                        <span style="color: white; background-color: #28a745; padding: 4px 8px; border-radius: 4px;">On Hold</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+           
+        </div>
+    </div>
+
+    <div class="modal" id="logoutModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Confirm Logout</h3>
+            <p>Are you sure you want to logout from the admin panel?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="confirmLogout">Yes, Logout</button>
+                <button class="modal-btn cancel" id="cancelLogout">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/dash.js' %}"></script>
+</body>
+</html>

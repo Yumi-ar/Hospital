@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Admin Registration</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" type="text/css" href="{% static 'adminstyle.css' %}"> 
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/adminstyle.css' %}"> 
 </head>
 <body>
     {% include "navbar.html" %}
@@ -106,7 +106,7 @@
                             <label for="{{ form.country.id_for_label }}" class="form-label required-field">
                                 Country
                             </label>
-                            {% render_field form.country class="form-select" %}
+                            {% render_field form.country class="form-select" id="id_country" %}
                             {% for error in form.country.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i> {{ error }}
@@ -115,11 +115,11 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="{{ form.region.id_for_label }}" class="form-label">
+                            <label for="{{ form.region.id_for_label }}" class="form-label required-field">
                                 Region
                             </label>
                            
-                            {% render_field form.region class="form-select" disabled="disabled" %}
+                            {% render_field form.region class="form-select" id="id_region" disabled="disabled" %}
                             {% for error in form.region.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i> {{ error }}
@@ -134,24 +134,17 @@
                     <div class="section-header">
                         <h3><i class="fas fa-envelope"></i> Contact Information</h3>
                     </div>                         
+                    
+                   
                     <div class="form-group">
-                        <label class="section-label">Email Addresses</label>
-                        <div class="dynamic-input-group" id="emailGroup">
-                            <div class="input-item">
-                                <div class="input-wrapper">
-                                    <i class="fas fa-envelope input-icon"></i>
-                                    <input type="email" class="form-control email-input" placeholder="Enter email address" required>
-                                </div>
-                                <button type="button" class="btn-remove" onclick="removeInput(this)" disabled>
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                        <label for="{{ form.email.id_for_label }}" class="form-label required-field">
+                            Email Address
+                        </label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope input-icon"></i>
+                            {% render_field form.email class="form-control" placeholder="Enter email address" type="email" %}
                         </div>
-                        <button type="button" class="btn-add-more" onclick="addEmailInput()">
-                            <i class="fas fa-plus"></i> Add Another Email
-                        </button>
-                        {% render_field form.emails style="display: none;" %}
-                        {% for error in form.emails.errors %}
+                        {% for error in form.email.errors %}
                             <div class="error-message">
                                 <i class="fas fa-exclamation-circle"></i> {{ error }}
                             </div>
@@ -160,7 +153,7 @@
                     
                     <!-- Phone Numbers -->
                     <div class="form-group">
-                        <label class="section-label">Phone Numbers</label>
+                        <label class="section-label required-field">Phone Numbers</label>
                         <div class="dynamic-input-group" id="phoneGroup">
                             <div class="input-item">
                                 <div class="input-wrapper">
@@ -189,9 +182,10 @@
                     <div class="section-header">
                         <h3><i class="fas fa-lock"></i> Security Information</h3>
                     </div>
-                    
-                    <!-- Password -->
-                    <div class="form-row"></div>
+                &nbsp;
+                &nbsp;
+                    <div class="form-row">
+                        <!-- Password -->
                         <div class="form-group">
                             <label for="{{ form.password.id_for_label }}" class="form-label required-field">
                                 Password
@@ -220,7 +214,8 @@
                                 </div>
                                 <span class="strength-text" id="strengthText">Too weak</span>
                             </div>
-                            
+                &nbsp;
+                &nbsp;
                             {% for error in form.password.errors %}
                                 <div class="error-message">
                                     <i class="fas fa-exclamation-circle"></i> {{ error }}
@@ -229,27 +224,27 @@
                         </div>
                         
                         <!-- Confirm Password -->
-                        <div class="form-group">
-                            <label for="{{ form.confirm_password.id_for_label }}" class="form-label required-field">
-                                Confirm Password
-                            </label>
-                            <div class="password-field-container">
-                                {% render_field form.confirm_password class="form-control" placeholder="Confirm password" id="confirmPasswordField" %}
-                                <button type="button" class="toggle-password">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                            <div id="passwordMatch" class="password-match"></div>
-                            {% for error in form.confirm_password.errors %}
-                                <div class="error-message">
-                                    <i class="fas fa-exclamation-circle"></i> {{ error }}
+                            <div class="form-group">
+                                <label for="{{ form.confirm_password.id_for_label }}" class="form-label required-field">
+                                    Confirm Password
+                                </label>
+                                <div class="password-field-container">
+                                    {% render_field form.confirm_password class="form-control" placeholder="Confirm password" id="confirmPasswordField" %}
+                                    <button type="button" class="toggle-password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
                                 </div>
-                            {% endfor %}
+                                <div id="passwordMatch" class="password-match"></div>
+                                {% for error in form.confirm_password.errors %}
+                                    <div class="error-message">
+                                        <i class="fas fa-exclamation-circle"></i> {{ error }}
+                                    </div>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
-                </div>
                 
-                <!-- Form Actions -->
+                
                 <div class="form-actions">
                     <button type="submit" class="submit-btn">
                         <i class="fas fa-user-plus"></i>
@@ -270,7 +265,9 @@
         </div>
     </div>
    
-    {{ COUNTRY_REGION_CHOICES|json_script:"country-region-data" }}   
+    {{ COUNTRY_REGION_CHOICES|json_script:"COUNTRY_REGION_DATA" }}
+
+    
     <script src="{% static 'js/admin_registration.js' %}"></script>  
 </body>
 </html>

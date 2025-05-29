@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Global Hospitals - Admin Login</title>
-    <link rel="stylesheet" href="{% static 'admin_login.css' %}">
+    <link rel="stylesheet" href="{% static 'admin/css/admin_login.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -28,9 +28,18 @@
         <div class="login-container">
             <div class="login-header">
                 <h1>Admin Login</h1>
-                <p>Enter your email/phone and password</p>
+                <p>Enter your email and password</p>
                 <div class="header-decoration"></div>
             </div>
+            
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-danger">
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
             
             <form method="post" class="login-form" id="loginForm">
                 {% csrf_token %}
@@ -45,8 +54,8 @@
                 
                 <div class="form-group">
                     <div class="login-input-wrapper">
-                        <input type="text" name="username" id="usernameField" class="form-control" 
-                               placeholder="Email or Phone" required>
+                    
+                        <input type="email" name="username" id="usernameField" class="form-control" placeholder="Email" required>
                         <i class="fas fa-user form-icon"></i>
                     </div>
                     {% if form.username.errors %}
