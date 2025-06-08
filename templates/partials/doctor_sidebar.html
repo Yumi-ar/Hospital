@@ -1,0 +1,42 @@
+<ul class="nav flex-column">
+    <!-- Dashboard -->
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'doctor_dashboard' %}">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+    </li>
+    
+    <!-- Consultations -->
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'consultations' %}">
+            <i class="fas fa-calendar-check"></i> My Consultations
+        </a>
+    </li>
+    
+    <!-- Patient Access -->
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'request_patient_access' %}">
+            <i class="fas fa-user-shield"></i> Request Patient Access
+        </a>
+    </li>
+   <!-- Patient Records (conditional if any permissions exist) -->
+{% if request.user.doctor.access_permissions.exists %}
+<li class="nav-item">
+    <a class="nav-link" href="#patientRecordsSubmenu" data-bs-toggle="collapse">
+        <i class="fas fa-folder-open"></i> Patient Records <i class="fas fa-angle-down"></i>
+    </a>
+    <div id="patientRecordsSubmenu" class="collapse">
+        <ul class="nav flex-column ps-3">
+            {% for permission in request.user.doctor.access_permissions.all %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'patient_records' permission.patient.id %}">
+                    <i class="fas fa-user-injured"></i> {{ permission.patient.user.get_full_name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</li>
+{% endif %}
+ 
+</ul>

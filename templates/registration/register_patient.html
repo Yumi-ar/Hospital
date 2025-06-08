@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inscription Patient{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary: #3498db;
+        --primary-dark: #2980b9;
+        --secondary: #f8f9fa;
+        --light: #ffffff;
+        --dark: #343a40;
+        --border: #e0e0e0;
+        --text: #495057;
+        --text-light: #6c757d;
+        --success: #2ecc71;
+        --danger: #e74c3c;
+        --warning: #f39c12;
+        --info: #17a2b8;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 L100,0 L100,100 L0,100 Z" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/></svg>');
+        background-size: 20px 20px;
+        opacity: 0.3;
+    }
+
+    .card-header h3 {
+        font-weight: 600;
+        margin-bottom: 0;
+        position: relative;
+        letter-spacing: 0.5px;
+    }
+
+    .card-body {
+        padding: 2.5rem;
+        background-color: var(--light);
+    }
+
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1.5rem;
+        }
+    }
+
+    .form-group {
+        margin-bottom: 1.75rem;
+        position: relative;
+    }
+
+    .form-control {
+        border-radius: 8px;
+        padding: 0.85rem 1.25rem;
+        border: 2px solid var(--border);
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        font-size: 0.95rem;
+        height: auto;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    label {
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.95rem;
+    }
+
+    .required-field::after {
+        content: " *";
+        color: var(--danger);
+    }
+
+    .border-bottom {
+        border-bottom: 2px solid var(--primary) !important;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        padding: 0.85rem 2.5rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-secondary {
+        padding: 0.75rem 2rem;
+        font-weight: 500;
+    }
+
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+    }
+
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        display: block;
+    }
+
+    .text-center a {
+        color: var(--primary);
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .text-center a:hover {
+        color: var(--primary-dark);
+        text-decoration: none;
+    }
+
+    /* Password toggle */
+    .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 40px;
+        cursor: pointer;
+        color: var(--text-light);
+        transition: all 0.3s ease;
+        z-index: 5;
+    }
+
+    .password-toggle:hover {
+        color: var(--primary);
+    }
+
+    /* Date picker icon */
+    .datepicker-icon {
+        position: absolute;
+        right: 15px;
+        top: 40px;
+        color: var(--text-light);
+        pointer-events: none;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .btn-lg {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        
+        .ml-2 {
+            margin-left: 0 !important;
+        }
+        
+        .card-header h3 {
+            font-size: 1.4rem;
+        }
+        
+        .border-bottom {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header text-white">
+                    <h3 class="mb-0"><i class="fas fa-user-injured mr-2"></i> Patient Registration</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="close" data-dismiss="alert">
+                                    <span>&times;</span>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Personal Information -->
+                        <h5 class="border-bottom">Personal Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.first_name.id_for_label }}" class="required-field">First Name</label>
+                                    {{ form.first_name }}
+                                    {% if form.first_name.errors %}
+                                        <div class="text-danger">{{ form.first_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.last_name.id_for_label }}" class="required-field">Last Name</label>
+                                    {{ form.last_name }}
+                                    {% if form.last_name.errors %}
+                                        <div class="text-danger">{{ form.last_name.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.email.id_for_label }}" class="required-field">Email</label>
+                                    {{ form.email }}
+                                    {% if form.email.errors %}
+                                        <div class="text-danger">{{ form.email.errors }}</div>
+                                    {% endif %}
+                                    <small class="form-text text-muted">This will be your login ID.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.date_of_birth.id_for_label }}" class="required-field">Date of Birth</label>
+                                    {{ form.date_of_birth }}
+                                    <i class="fas fa-calendar-alt datepicker-icon"></i>
+                                    {% if form.date_of_birth.errors %}
+                                        <div class="text-danger">{{ form.date_of_birth.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Information -->
+                        <h5 class="border-bottom mt-5">Account Information</h5>
+                        <div class="form-group">
+                            <label for="{{ form.username.id_for_label }}" class="required-field">Username</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Choose a unique username.</small>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.password1.id_for_label }}" class="required-field">Password</label>
+                                    {{ form.password1 }}
+                                    <i class="fas fa-eye password-toggle" onclick="togglePassword('{{ form.password1.id_for_label }}')"></i>
+                                    {% if form.password1.errors %}
+                                        <div class="text-danger">{{ form.password1.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.password2.id_for_label }}" class="required-field">Confirm Password</label>
+                                    {{ form.password2 }}
+                                    <i class="fas fa-eye password-toggle" onclick="togglePassword('{{ form.password2.id_for_label }}')"></i>
+                                    {% if form.password2.errors %}
+                                        <div class="text-danger">{{ form.password2.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <h5 class="border-bottom mt-5">Contact Information</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.phone_number.id_for_label }}" class="required-field">Phone</label>
+                                    {{ form.phone_number }}
+                                    {% if form.phone_number.errors %}
+                                        <div class="text-danger">{{ form.phone_number.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.blood_type.id_for_label }}" class="required-field">Blood Type</label>
+                                    {{ form.blood_type }}
+                                    {% if form.blood_type.errors %}
+                                        <div class="text-danger">{{ form.blood_type.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.address.id_for_label }}" class="required-field">Address</label>
+                            {{ form.address }}
+                            {% if form.address.errors %}
+                                <div class="text-danger">{{ form.address.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Emergency Contact -->
+                        <h5 class="border-bottom mt-5">Emergency contact</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.emergency_contact.id_for_label }}" class="required-field">Contact name</label>
+                                    {{ form.emergency_contact }}
+                                    {% if form.emergency_contact.errors %}
+                                        <div class="text-danger">{{ form.emergency_contact.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="{{ form.emergency_phone.id_for_label }}" class="required-field">Phone Emergency</label>
+                                    {{ form.emergency_phone }}
+                                    {% if form.emergency_phone.errors %}
+                                        <div class="text-danger">{{ form.emergency_phone.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Medical Information -->
+                        <h5 class="border-bottom mt-5">Medical Information (Optional)</h5>
+                        <div class="form-group">
+                            <label for="{{ form.allergies.id_for_label }}">Allergies</label>
+                            {{ form.allergies }}
+                            {% if form.allergies.errors %}
+                                <div class="text-danger">{{ form.allergies.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">List your allergies separated by commas</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="{{ form.medical_history.id_for_label }}">Medical History</label>
+                            {{ form.medical_history }}
+                            {% if form.medical_history.errors %}
+                                <div class="text-danger">{{ form.medical_history.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">Describe your relevant medical history</small>
+                        </div>
+
+                        <div class="form-group text-center mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus mr-2"></i> Register
+                            </button>
+                            <a href="{% url 'registration_choice' %}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-arrow-left mr-2"></i> Back
+                            </a>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p>Already have an account? <a href="{% url 'login' %}">Log in here</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+    function togglePassword(fieldId) {
+        const field = document.getElementById(fieldId);
+        const icon = document.querySelector(`[onclick="togglePassword('${fieldId}')"]`);
+        
+        if (field.type === "password") {
+            field.type = "text";
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+        } else {
+            field.type = "password";
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
+        }
+    }
+
+   
+</script>
+{% endblock %}
