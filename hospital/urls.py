@@ -11,14 +11,6 @@ urlpatterns = [
 
     path('', views.home, name='home'),
     path('contact-us', views.contact, name='contactus'),
-
-   
-   
-
-
-
-
-
     
     path('register/', views.registration_choice, name='registration_choice'),
     path('login/', views.login_view, name='login'),  # Added trailing slash
@@ -78,6 +70,9 @@ urlpatterns = [
     path( 'radio/<id>/edit-results/',views.edit_radio_results,name='edit'),
     path('radio/<id>/delete/ ',views.delete_radio,name='delete'),
     path('radio/<id>/generate-pdf/',views.generate_radio_pdf,name='pdf'),
-    path('radio/<id>/view-images/'  ,views.view_radio_images,name='radio_image')
+    path('radio/<id>/view-images/'  ,views.view_radio_images,name='radio_image'),
+
+
+    path('download_public_key/',views.download_public_key, name='download_public_key'),
    
 ]
