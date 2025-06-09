@@ -1,0 +1,532 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Résultats Radiologiques{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/forms.css' %}" rel="stylesheet">
+<style>
+    .finding-form {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
+    .finding-form.to-delete {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+    }
+    .image-upload-area {
+        border: 2px dashed #ccc;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        transition: border-color 0.3s;
+    }
+    .image-upload-area:hover {
+        border-color: #007bff;
+    }
+    .severity-high { border-left: 4px solid #dc3545; }
+    .severity-medium { border-left: 4px solid #ffc107; }
+    .severity-low { border-left: 4px solid #28a745; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        Résultats de l'Examen Radiologique
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Exam Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-user me-2"></i>Patient: {{ radio.patient.user.get_full_name }}</h6>
+                                        <p class="mb-0">
+                                            <strong>Âge:</strong> {{ radio.patient.age }} ans |
+                                            <strong>Sexe:</strong> {{ radio.patient.get_gender_display }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-x-ray me-2"></i>{{ radio.get_exam_type_display }} - {{ radio.get_body_part_display }}</h6>
+                                        <p class="mb-0">
+                                            <strong>Prescrit le:</strong> {{ radio.ordered_date|date:"d/m/Y" }} |
+                                            <strong>Indication:</strong> {{ radio.clinical_indication }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <!-- Basic Results -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Informations de base</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                                <strong>Statut *</strong>
+                                            </label>
+                                            {{ form.status }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.performed_date.id_for_label }}" class="form-label">
+                                                <strong>Date de réalisation</strong>
+                                            </label>
+                                            {{ form.performed_date }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.radiographer.id_for_label }}" class="form-label">
+                                                <strong>Radiographe</strong>
+                                            </label>
+                                            {{ form.radiographer }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.image_quality.id_for_label }}" class="form-label">
+                                                <strong>Qualité des images</strong>
+                                            </label>
+                                            {{ form.image_quality }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.pacs_number.id_for_label }}" class="form-label">
+                                                <strong>Numéro PACS</strong>
+                                            </label>
+                                            {{ form.pacs_number }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Technical Parameters -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Paramètres techniques</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.technical_parameters.id_for_label }}" class="form-label">
+                                                <strong>Paramètres techniques</strong>
+                                            </label>
+                                            {{ form.technical_parameters }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.radiation_dose.id_for_label }}" class="form-label">
+                                                <strong>Dose de radiation (mGy)</strong>
+                                            </label>
+                                            {{ form.radiation_dose }}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contrast Information -->
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.contrast_used }}
+                                            <label class="form-check-label" for="{{ form.contrast_used.id_for_label }}">
+                                                Produit de contraste utilisé
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.contrast_agent.id_for_label }}" class="form-label">
+                                                <strong>Agent de contraste</strong>
+                                            </label>
+                                            {{ form.contrast_agent }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.contrast_volume.id_for_label }}" class="form-label">
+                                                <strong>Volume (ml)</strong>
+                                            </label>
+                                            {{ form.contrast_volume }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Findings -->
+                        <div class="card mb-4">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Constatations radiologiques</h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-finding">
+                                    <i class="fas fa-plus me-1"></i>Ajouter une constatation
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div id="findings-container">
+                                    {{ formset.management_form }}
+                                    {% for finding_form in formset %}
+                                        <div class="finding-form" data-form-index="{{ forloop.counter0 }}">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="mb-0">Constatation #{{ forloop.counter }}</h6>
+                                                <button type="button" class="btn btn-sm btn-outline-danger delete-finding">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                            
+                                            {% for hidden in finding_form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                            
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Région anatomique</label>
+                                                        {{ finding_form.anatomical_region }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Localisation</label>
+                                                        {{ finding_form.location }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label class="form-label">Description</label>
+                                                {{ finding_form.description }}
+                                            </div>
+                                            
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Mesure</label>
+                                                        {{ finding_form.measurement }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Degré de certitude</label>
+                                                        {{ finding_form.certainty }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="form-check mt-4">
+                                                        {{ finding_form.is_abnormal }}
+                                                        <label class="form-check-label">
+                                                            Anormal
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {{ finding_form.DELETE }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detailed Results -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Résultats détaillés</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        <strong>Description détaillée</strong>
+                                    </label>
+                                    {{ form.description }}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.impression.id_for_label }}" class="form-label">
+                                        <strong>Impression radiologique</strong>
+                                    </label>
+                                    {{ form.impression }}
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.recommendations.id_for_label }}" class="form-label">
+                                        <strong>Recommandations</strong>
+                                    </label>
+                                    {{ form.recommendations }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Follow-up -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Suivi</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-check mb-3">
+                                            {{ form.follow_up_required }}
+                                            <label class="form-check-label" for="{{ form.follow_up_required.id_for_label }}">
+                                                Suivi requis
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="mb-3">
+                                            <label for="{{ form.follow_up_period.id_for_label }}" class="form-label">
+                                                <strong>Période de suivi (jours)</strong>
+                                            </label>
+                                            {{ form.follow_up_period }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="{{ form.follow_up_instructions.id_for_label }}" class="form-label">
+                                        <strong>Instructions de suivi</strong>
+                                    </label>
+                                    {{ form.follow_up_instructions }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Upload -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">Images</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="image-upload-area">
+                                    <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                                    <p>Glissez-déposez les images DICOM ou cliquez pour sélectionner</p>
+                                    {{ form.images }}
+                                </div>
+                                
+                                {% if radio.images.all %}
+                                <div class="mt-3">
+                                    <h6>Images existantes:</h6>
+                                    <div class="row">
+                                        {% for image in radio.images.all %}
+                                        <div class="col-md-3 mb-2">
+                                            <div class="card">
+                                                <img src="{{ image.image.url }}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                                                <div class="card-body p-2">
+                                                    <small class="text-muted">{{ image.description|default:"Image" }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'radio_list' radio.patient.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                            <div>
+                                <button type="submit" name="save_draft" class="btn btn-outline-primary me-2">
+                                    <i class="fas fa-save me-2"></i>Sauvegarder brouillon
+                                </button>
+                                <button type="submit" name="complete" class="btn btn-success">
+                                    <i class="fas fa-check me-2"></i>Finaliser le rapport
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    // Dynamic formset management
+   let findingFormIndex = parseInt("{{ formset.total_form_count }}");
+
+    document.getElementById('add-finding').addEventListener('click', function() {
+        const container = document.getElementById('findings-container');
+        const emptyForm = container.querySelector('.finding-form').cloneNode(true);
+        
+        // Update form index
+        emptyForm.setAttribute('data-form-index', findingFormIndex);
+        
+        // Clear values and update names/ids
+        const inputs = emptyForm.querySelectorAll('input, select, textarea');
+        inputs.forEach(function(input) {
+            const name = input.name.replace(/-\d+-/, '-' + findingFormIndex + '-');
+            const id = input.id.replace(/-\d+-/, '-' + findingFormIndex + '-');
+            input.name = name;
+            input.id = id;
+            input.value = '';
+            input.checked = false;
+        });
+        
+        // Update labels
+        const labels = emptyForm.querySelectorAll('label');
+        labels.forEach(function(label) {
+            if (label.getAttribute('for')) {
+                const forAttr = label.getAttribute('for').replace(/-\d+-/, '-' + findingFormIndex + '-');
+                label.setAttribute('for', forAttr);
+            }
+        });
+        
+        // Update title
+        emptyForm.querySelector('h6').textContent = 'Constatation #' + (findingFormIndex + 1);
+        
+        container.appendChild(emptyForm);
+        findingFormIndex++;
+        
+        // Update management form
+        document.getElementById('id_form-TOTAL_FORMS').value = findingFormIndex;
+    });
+
+    // Delete finding
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-finding')) {
+            const findingForm = e.target.closest('.finding-form');
+            const deleteInput = findingForm.querySelector('input[name$="-DELETE"]');
+            
+            if (deleteInput) {
+                deleteInput.checked = true;
+                findingForm.classList.add('to-delete');
+                findingForm.style.display = 'none';
+            } else {
+                findingForm.remove();
+            }
+        }
+    });
+
+    // Image upload drag and drop
+    const uploadArea = document.querySelector('.image-upload-area');
+    const fileInput = uploadArea.querySelector('input[type="file"]');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+        uploadArea.classList.add('border-primary');
+    }
+
+    function unhighlight(e) {
+        uploadArea.classList.remove('border-primary');
+    }
+
+    uploadArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+    }
+
+    // Auto-save functionality
+    let autoSaveTimeout;
+    const formInputs = document.querySelectorAll('input, textarea, select');
+    
+    formInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(autoSave, 30000); // Auto-save after 30 seconds of inactivity
+        });
+    });
+
+    function autoSave() {
+        const formData = new FormData(document.querySelector('form'));
+        formData.append('auto_save', '1');
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        }).then(response => {
+            if (response.ok) {
+                showNotification('Brouillon sauvegardé automatiquement', 'success');
+            }
+        }).catch(error => {
+            console.error('Auto-save failed:', error);
+        });
+    }
+
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 5000);
+    }
+</script>
+{% endblock %}

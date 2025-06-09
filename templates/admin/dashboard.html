@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Admin Dashboard</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-center bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <h4>{{ total_patients }}</h4>
+                <p>Patients</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-user-md fa-3x mb-3"></i>
+                <h4>{{ total_doctors }}</h4>
+                <p>Doctors</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center bg-warning text-white">
+            <div class="card-body">
+                <i class="fas fa-clock fa-3x mb-3"></i>
+                <h4>{{ pending_verifications }}</h4>
+                <p>Pending Verifications</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-center bg-info text-white">
+            <div class="card-body">
+                <i class="fas fa-cog fa-3x mb-3"></i>
+                <h4>System</h4>
+                <p>Active</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h3>Recent Activities</h3>
+    <div class="card">
+        <div class="card-body">
+            {% if recent_activities %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in recent_activities %}
+                            <tr>
+                                <td>{{ activity.user.username }}</td>
+                                <td>{{ activity.action }}</td>
+                                <td>{{ activity.description }}</td>
+                                <td>{{ activity.timestamp|date:"m/d/Y H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No recent activity</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

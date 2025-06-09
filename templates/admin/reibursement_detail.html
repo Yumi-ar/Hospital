@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+
+{% block title %}Reimbursement Details #{{ reimbursement.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Reimbursement Details #{{ reimbursement.id }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'admin_reimbursements' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to list
+            </a>
+            {% if reimbursement.status == 'pending' %}
+            <a href="{% url 'process_reimbursement' reimbursement.id %}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Process
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Main Details -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-receipt"></i> Request Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Request ID:</dt>
+                    <dd class="col-sm-9">#{{ reimbursement.id }}</dd>
+                    
+                    <dt class="col-sm-3">Patient:</dt>
+                    <dd class="col-sm-9">
+                        <strong>{{ reimbursement.patient.user.get_full_name }}</strong><br>
+                        <small class="text-muted">{{ reimbursement.patient.user.email }}</small>
+                    </dd>
+                    
+                    <dt class="col-sm-3">Amount Requested:</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-primary fs-6">{{ reimbursement.amount_requested|floatformat:2 }}DA</span>
+                    </dd>
+                    
+                    {% if reimbursement.amount_approved %}
+                    <dt class="col-sm-3">Amount Approved:</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-success fs-6">{{ reimbursement.amount_approved|floatformat:2 }}DA</span>
+                    </dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-3">Status:</dt>
+                    <dd class="col-sm-9">
+                        {% if reimbursement.status == 'pending' %}
+                            <span class="badge bg-warning text-dark fs-6">Pending</span>
+                        {% elif reimbursement.status == 'approved' %}
+                            <span class="badge bg-success fs-6">Approved</span>
+                        {% elif reimbursement.status == 'denied' %}
+                            <span class="badge bg-danger fs-6">Denied</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-3">Submission Date:</dt>
+                    <dd class="col-sm-9">{{ reimbursement.submitted_at|date:"d/m/Y à H:i" }}</dd>
+                    
+                    {% if reimbursement.processed_at %}
+                    <dt class="col-sm-3">Processing Date:</dt>
+                    <dd class="col-sm-9">{{ reimbursement.processed_at|date:"d/m/Y à H:i" }}</dd>
+                    {% endif %}
+                    
+                    {% if reimbursement.processed_by %}
+                    <dt class="col-sm-3">Processed By:</dt>
+                    <dd class="col-sm-9">{{ reimbursement.processed_by.get_full_name|default:reimbursement.processed_by.username }}</dd>
+                    {% endif %}
+                </dl>
+                
+                {% if reimbursement.description %}
+                <hr>
+                <h6>Request Description:</h6>
+                <div class="alert alert-light">
+                    {{ reimbursement.description|linebreaks }}
+                </div>
+                {% endif %}
+                
+                {% if reimbursement.admin_comments %}
+                <hr>
+                <h6>Administrator Comments:</h6>
+                <div class="alert alert-info">
+                    {{ reimbursement.admin_comments|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Receipt Section -->
+        {% if reimbursement.receipt %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-file-invoice"></i> Attached Receipt</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>File:</strong> {{ reimbursement.receipt.name|default:"Receipt" }}</p>
+                        <a href="{{ reimbursement.receipt.url }}" target="_blank" class="btn btn-outline-primary">
+                            <i class="fas fa-download"></i> Download Receipt
+                        </a>
+                        <a href="{{ reimbursement.receipt.url }}" target="_blank" class="btn btn-outline-info">
+                            <i class="fas fa-external-link-alt"></i> Open in New Tab
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        {% if reimbursement.receipt.url|slice:"-4:" == ".pdf" %}
+                            <embed src="{{ reimbursement.receipt.url }}" width="100%" height="200px" type="application/pdf">
+                        {% else %}
+                            <img src="{{ reimbursement.receipt.url }}" class="img-fluid" alt="Receipt" style="max-height: 200px;">
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Patient Info -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user"></i> Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <dl>
+                    <dt>Full Name:</dt>
+                    <dd>{{ reimbursement.patient.user.get_full_name }}</dd>
+                    
+                    <dt>Email:</dt>
+                    <dd>{{ reimbursement.patient.user.email }}</dd>
+                    
+                    {% if reimbursement.patient.phone %}
+                    <dt>Phone:</dt>
+                    <dd>{{ reimbursement.patient.phone }}</dd>
+                    {% endif %}
+                    
+                    {% if reimbursement.patient.date_of_birth %}
+                    <dt>Date of Birth:</dt>
+                    <dd>{{ reimbursement.patient.date_of_birth|date:"d/m/Y" }}</dd>
+                    {% endif %}
+                    
+                    <dt>Member Since:</dt>
+                    <dd>{{ reimbursement.patient.user.date_joined|date:"d/m/Y" }}</dd>
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Timeline -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-clock"></i> Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">Request Submitted</h6>
+                            <p class="timeline-text">{{ reimbursement.submitted_at|date:"d/m/Y à H:i" }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if reimbursement.processed_at %}
+                    <div class="timeline-item">
+                        <div class="timeline-marker {% if reimbursement.status == 'approved' %}bg-success{% else %}bg-danger{% endif %}"></div>
+                        <div class="timeline-content">
+                            <h6 class="timeline-title">
+                                {% if reimbursement.status == 'approved' %}
+                                    Request Approved
+                                {% else %}
+                                    Request Denied
+                                {% endif %}
+                            </h6>
+                            <p class="timeline-text">{{ reimbursement.processed_at|date:"d/m/Y à H:i" }}</p>
+                            {% if reimbursement.processed_by %}
+                            <small class="text-muted">By {{ reimbursement.processed_by.get_full_name|default:reimbursement.processed_by.username }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                {% if reimbursement.status == 'pending' %}
+                <a href="{% url 'process_reimbursement' reimbursement.id %}" class="btn btn-primary btn-sm w-100 mb-2">
+                    <i class="fas fa-edit"></i> Process Request
+                </a>
+                {% endif %}
+                
+                {% if reimbursement.receipt %}
+                <a href="{{ reimbursement.receipt.url }}" target="_blank" class="btn btn-outline-info btn-sm w-100 mb-2">
+                    <i class="fas fa-download"></i> Download Receipt
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'admin_reimbursements' %}" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="fas fa-list"></i> View All Requests
+                </a>
+            </div>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="fas fa-chart-bar"></i> Patient Summary</h6>
+            </div>
+            <div class="card-body">
+                <small class="text-muted">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <strong>{{ patient_stats.total_requests|default:0 }}</strong><br>
+                            <small>Requests</small>
+                        </div>
+                        <div class="col-4">
+                            <strong>{{ patient_stats.approved_requests|default:0 }}</strong><br>
+                            <small>Approved</small>
+                        </div>
+                        <div class="col-4">
+                            <strong>{{ patient_stats.total_amount|default:0|floatformat:0 }}DA</strong><br>
+                            <small>Total</small>
+                        </div>
+                    </div>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Timeline Styles */
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 25px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -23px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px #dee2e6;
+}
+
+.timeline-content {
+    margin-left: 10px;
+}
+
+.timeline-title {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.timeline-text {
+    margin-bottom: 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends 'base.html' %}
+
+{% block title %}Process Reimbursement #{{ reimbursement.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Process Reimbursement #{{ reimbursement.id }}</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'admin_reimbursements' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to list
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Reimbursement Details -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Request Details</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Patient:</dt>
+                    <dd class="col-sm-8">
+                        <strong>{{ reimbursement.patient.user.get_full_name }}</strong><br>
+                        <small class="text-muted">{{ reimbursement.patient.user.email }}</small>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Amount Requested:</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-primary fs-6">{{ reimbursement.amount_requested|floatformat:2 }}DA</span>
+                    </dd>
+                    
+                    <dt class="col-sm-4">Submission Date:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.submitted_at|date:"d/m/Y à H:i" }}</dd>
+                    
+                    <dt class="col-sm-4">Current Status:</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-warning text-dark">Pending</span>
+                    </dd>
+                    
+                    {% if reimbursement.description %}
+                    <dt class="col-sm-4">Description:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.description }}</dd>
+                    {% endif %}
+                    
+                    {% if reimbursement.receipt %}
+                    <dt class="col-sm-4">Receipt:</dt>
+                    <dd class="col-sm-8">
+                        <a href="{{ reimbursement.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-file-download"></i> Download Receipt
+                        </a>
+                    </dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+        
+        <!-- Patient Information -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-user"></i> Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-4">Full Name:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.patient.user.get_full_name }}</dd>
+                    
+                    <dt class="col-sm-4">Email:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.patient.user.email }}</dd>
+                    
+                    {% if reimbursement.patient.phone %}
+                    <dt class="col-sm-4">Phone:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.patient.phone }}</dd>
+                    {% endif %}
+                    
+                    {% if reimbursement.patient.date_of_birth %}
+                    <dt class="col-sm-4">Date of Birth:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.patient.date_of_birth|date:"d/m/Y" }}</dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-4">Member Since:</dt>
+                    <dd class="col-sm-8">{{ reimbursement.patient.user.date_joined|date:"d/m/Y" }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Processing Form -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> Processing Request</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <!-- Approve Section -->
+                    <div class="mb-4">
+                        <h6 class="text-success"><i class="fas fa-check-circle"></i> Approve Request</h6>
+                        <div class="border border-success rounded p-3 mb-3">
+                            <div class="mb-3">
+                                <label for="amount_approved" class="form-label">Amount to Approve (DA)</label>
+                                <input type="number" 
+                                       step="0.01" 
+                                       min="0" 
+                                       max="{{ reimbursement.amount_requested }}"
+                                       class="form-control" 
+                                       id="amount_approved" 
+                                       name="amount_approved" 
+                                       value="{{ reimbursement.amount_requested }}"
+                                       placeholder="0.00">
+                                <small class="form-text text-muted">
+                                    Maximum: {{ reimbursement.amount_requested|floatformat:2 }}DA
+                                </small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="admin_comments_approve" class="form-label">Comments (optional)</label>
+                                <textarea class="form-control" 
+                                          id="admin_comments_approve" 
+                                          name="admin_comments" 
+                                          rows="3" 
+                                          placeholder="Comments on approval..."></textarea>
+                            </div>
+                            
+                            <button type="submit" name="action" value="approve" class="btn btn-success">
+                                <i class="fas fa-check"></i> Approve Reimbursement
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Deny Section -->
+                    <div class="mb-4">
+                        <h6 class="text-danger"><i class="fas fa-times-circle"></i> Deny Request</h6>
+                        <div class="border border-danger rounded p-3">
+                            <div class="mb-3">
+                                <label for="admin_comments_deny" class="form-label">Reason for Denial</label>
+                                <textarea class="form-control" 
+                                          id="admin_comments_deny" 
+                                          name="admin_comments" 
+                                          rows="3" 
+                                          placeholder="Please explain the reason for denial..."></textarea>
+                                <small class="form-text text-muted">
+                                    This comment will be visible to the patient.
+                                </small>
+                            </div>
+                            
+                            <button type="submit" name="action" value="deny" class="btn btn-danger">
+                                <i class="fas fa-times"></i> Deny Reimbursement
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Processing Guidelines -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6><i class="fas fa-lightbulb"></i> Processing Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Ensure the receipt is legible and authentic
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Confirm that the amount matches the receipt
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Check eligibility according to the policy
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Add explanatory comments if necessary
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Prevent form submission conflicts
+document.addEventListener('DOMContentLoaded', function() {
+    const approveBtn = document.querySelector('button[value="approve"]');
+    const denyBtn = document.querySelector('button[value="deny"]');
+    
+    approveBtn.addEventListener('click', function(e) {
+        const amount = document.getElementById('amount_approved').value;
+        if (!amount || amount <= 0) {
+            e.preventDefault();
+            alert('Please enter a valid amount to approve.');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to approve this reimbursement of ${amount}DA?`)) {
+            e.preventDefault();
+        }
+    });
+    
+    denyBtn.addEventListener('click', function(e) {
+        const comments = document.getElementById('admin_comments_deny').value.trim();
+        if (!comments) {
+            e.preventDefault();
+            alert('Please provide a reason for the denial.');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to deny this reimbursement?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

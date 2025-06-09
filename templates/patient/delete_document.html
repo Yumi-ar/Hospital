@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Document{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Delete Document</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <i class="fas fa-exclamation-triangle"></i> Deletion Confirmation
+            </div>
+            <div class="card-body">
+                <p class="text-center">
+                    Are you sure you want to delete the following document?
+                </p>
+                <div class="alert alert-info text-center">
+                    <strong>{{ document.title }}</strong><br>
+                    <small>Type: {{ document.get_document_type_display }}</small><br>
+                    <small>Created on: {{ document.created_at|date:"d/m/Y H:i" }}</small>
+                </div>
+                <p class="text-warning">
+                    <i class="fas fa-warning"></i> This action is irreversible.
+                </p>
+                
+                <form method="post" class="text-center">
+                    {% csrf_token %}
+                    <a href="{% url 'patient_documents' %}" class="btn btn-secondary me-2">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Confirm Deletion
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

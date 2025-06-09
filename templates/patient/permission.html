@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Permission Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Permission Management</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-check-circle"></i> Active Permissions
+            </div>
+            <div class="card-body">
+                {% if active_permissions %}
+                    {% for permission in active_permissions %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 border rounded">
+                            <div>
+                                <strong>Dr. {{ permission.doctor.user.get_full_name }}</strong><br>
+                                <small class="text-muted">{{ permission.doctor.specialty }}</small><br>
+                                <small>Granted on {{ permission.granted_at|date:"d/m/Y" }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-danger" onclick="revokePermission('{{ permission.id }}')">
+                                <i class="fas fa-times"></i> Revoke
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No active permissions</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-clock"></i> Pending Requests
+            </div>
+            <div class="card-body">
+                {% if pending_requests %}
+                    {% for request in pending_requests %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-3 border rounded">
+                            <div>
+                                <strong>Dr. {{ request.doctor.user.get_full_name }}</strong><br>
+                                <small class="text-muted">{{ request.doctor.specialty }}</small><br>
+                                <small>Reason: {{ request.reason }}</small><br>
+                                <small>Requested on {{ request.requested_at|date:"d/m/Y" }}</small>
+                            </div>
+                            <div>
+                                <a href="{% url 'respond_to_access_request' request.id %}" class="btn btn-sm btn-primary">
+                                    Respond
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No pending requests</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function revokePermission(permissionId) {
+    if (confirm('Are you sure you want to revoke this permission?')) {
+        // You can use fetch() to make an AJAX call
+        fetch(`/revoke-permission/${permissionId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                location.reload(); // Reload the page to see the changes
+            } else {
+                alert('Error revoking the permission');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error revoking the permission');
+        });
+    }
+}
+</script>
+{% endblock %}

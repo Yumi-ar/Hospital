@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Respond to Access Request{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Respond to Access Request</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-user-md"></i> Request from Dr. {{ access_request.doctor.user.get_full_name }}
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>Doctor Information</h5>
+                    <p><strong>Name:</strong> Dr. {{ access_request.doctor.user.get_full_name }}</p>
+                    <p><strong>Specialty:</strong> {{ access_request.doctor.specialty }}</p>
+                    <p><strong>License Number:</strong> {{ access_request.doctor.license_number }}</p>
+                    <p><strong>Reason for Request:</strong> {{ access_request.reason }}</p>
+                    <p><strong>Request Date:</strong> {{ access_request.requested_at|date:"d/m/Y H:i" }}</p>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-center gap-3">
+                        <button type="submit" name="response" value="approve" class="btn btn-success">
+                            <i class="fas fa-check"></i> Approve Access
+                        </button>
+                        <button type="submit" name="response" value="deny" class="btn btn-danger">
+                            <i class="fas fa-times"></i> Deny Access
+                        </button>
+                        <a href="{% url 'manage_permissions' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

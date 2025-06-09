@@ -1,0 +1,1405 @@
+<!-- doctor/compare_radio_exams.html - COMPLETE VERSION -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Comparaison d'Examens Radiologiques{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/lightbox.min.css' %}" rel="stylesheet">
+<style>
+    .comparison-panel {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background: #f8f9fa;
+        margin-bottom: 1rem;
+    }
+    .exam-comparison-item {
+        border: 1px solid #e9ecef;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: white;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .exam-comparison-item:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .exam-comparison-item.selected {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+    .comparison-image {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-radius: 0.375rem;
+        cursor: pointer;
+    }
+    .comparison-viewer {
+        position: relative;
+        height: 400px;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        overflow: hidden;
+        background: #000;
+    }
+    .comparison-image-large {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        transition: all 0.3s ease;
+    }
+    .sync-controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.7);
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+    }
+    .timeline-container {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 2rem;
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .timeline-item:hover {
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    .timeline-item.active {
+        background: #e3f2fd;
+        border-radius: 0.375rem;
+        padding: 0.5rem;
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 0.5rem;
+        top: 0.75rem;
+        width: 0.75rem;
+        height: 0.75rem;
+        background: #007bff;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 0 2px #007bff;
+    }
+    .timeline-item::after {
+        content: '';
+        position: absolute;
+        left: 0.875rem;
+        top: 1.5rem;
+        width: 1px;
+        height: calc(100% - 0.5rem);
+        background: #dee2e6;
+    }
+    .timeline-item:last-child::after {
+        display: none;
+    }
+    .timeline-item.active::before {
+        background: #28a745;
+        box-shadow: 0 0 0 2px #28a745;
+    }
+    .findings-comparison {
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    .finding-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 0.25rem;
+        margin: 0.125rem;
+    }
+    .finding-normal { background: #d4edda; color: #155724; }
+    .finding-abnormal { background: #f8d7da; color: #721c24; }
+    .finding-improved { background: #d1ecf1; color: #0c5460; }
+    .finding-worsened { background: #f5c6cb; color: #721c24; }
+    .finding-stable { background: #fff3cd; color: #856404; }
+    .comparison-controls {
+        position: sticky;
+        top: 0;
+        background: white;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1rem 0;
+        z-index: 100;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .side-by-side {
+        display: flex;
+        gap: 1rem;
+    }
+    .side-by-side > div {
+        flex: 1;
+    }
+    .overlay-mode {
+        position: relative;
+    }
+    .overlay-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0.5;
+        mix-blend-mode: difference;
+    }
+    .comparison-slider {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        height: 4px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 2px;
+        cursor: pointer;
+    }
+    .comparison-slider-handle {
+        position: absolute;
+        top: -6px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border: 2px solid #007bff;
+        border-radius: 50%;
+        cursor: grab;
+    }
+    .comparison-slider-handle:active {
+        cursor: grabbing;
+    }
+    .image-info-overlay {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+    }
+    .evolution-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .evolution-improved {
+        background: #d4edda;
+        color: #155724;
+    }
+    .evolution-worsened {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .evolution-stable {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+    .evolution-new {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .comparison-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .comparison-metric {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255,255,255,0.1);
+        border-radius: 0.375rem;
+        margin: 0.5rem 0;
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        display: block;
+    }
+    .metric-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+    }
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        z-index: 1000;
+    }
+    .zoom-controls {
+        position: absolute;
+        top: 50px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.7);
+        border-radius: 0.375rem;
+        padding: 0.25rem;
+    }
+    .brightness-slider {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%) rotate(-90deg);
+        z-index: 1000;
+        width: 100px;
+    }
+    .comparison-annotations {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 900;
+    }
+    .annotation-point {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: rgba(255, 0, 0, 0.8);
+        border: 2px solid white;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        pointer-events: all;
+        cursor: pointer;
+    }
+    .annotation-tooltip {
+        position: absolute;
+        background: rgba(0,0,0,0.9);
+        color: white;
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        z-index: 1001;
+        transform: translate(-50%, -120%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        Comparison of Radiological Exams
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-user me-2"></i>{{ patient.user.get_full_name }}</h6>
+                            <p class="mb-0">
+                                <strong>Age:</strong> {{ patient.age }} years |
+                                <strong>Gender:</strong> {{ patient.get_gender_display }}
+                            </p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p class="mb-0">
+                                <strong>Total exams:</strong> {{ grouped_radios|length }} regions |
+                                <strong>Date:</strong> {{ "now"|date:"d/m/Y" }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comparison Controls -->
+    <div class="comparison-controls">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" id="side-by-side-mode">
+                        <i class="fas fa-columns"></i> Side by Side
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="overlay-mode">
+                        <i class="fas fa-layer-group"></i> Overlay
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="timeline-mode">
+                        <i class="fas fa-history"></i> Timeline
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary" id="sync-zoom">
+                        <i class="fas fa-link"></i> Sync Zoom
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="sync-brightness">
+                        <i class="fas fa-adjust"></i> Sync Brightness
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <select class="form-select d-inline-block w-auto" id="body-part-filter">
+                    <option value="">All Regions</option>
+                    {% for body_part, exams in grouped_radios.items %}
+                    <option value="{{ body_part }}">{{ body_part|capfirst }} ({{ exams|length }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+    {% if grouped_radios %}
+        {% for body_part, exams in grouped_radios.items %}
+        <div class="body-part-section" data-body-part="{{ body_part }}">
+            <!-- Body Part Header -->
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <div class="comparison-summary">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <h5 class="mb-2">
+                                    <i class="fas fa-search me-2"></i>
+                                    {{ body_part|capfirst }}
+                                </h5>
+                                <p class="mb-0">
+                                    {{ exams|length }} examen{{ exams|length|pluralize }} disponible{{ exams|length|pluralize }} 
+                                    du {{ exams|last.performed_date|date:"d/m/Y" }} au {{ exams|first.performed_date|date:"d/m/Y" }}
+                                </p>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="comparison-metric">
+                                            <span class="metric-value">{{ exams|length }}</span>
+                                            <span class="metric-label">Examens</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="comparison-metric">
+                                            <span class="metric-value">
+                                                {% with exams|first.performed_date|timesince:exams|last.performed_date as duration %}
+                                                    {{ duration|truncatewords:1 }}
+                                                {% endwith %}
+                                            </span>
+                                            <span class="metric-label">Period</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline View -->
+        <div class="row mb-4 timeline-view" style="display: none;">
+                <div class="col-md-3">
+                    <div class="timeline-container">
+                        <h6 class="mb-3">Exam Timeline</h6>
+                        {% for exam in exams %}
+                        <div class="timeline-item {% if forloop.first %}active{% endif %}" 
+                            data-exam-id="{{ exam.id }}"
+                            data-exam-date="{{ exam.performed_date|date:'d/m/Y' }}"
+                            data-exam-type="{{ exam.get_exam_type_display }}"
+                            onclick="selectTimelineExam('{{ exam.id }}', '{{ exam.images.first.image.url|default_if_none:''|default:'' }}', '{{ body_part }}')">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <strong>{{ exam.performed_date|date:"d/m/Y" }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ exam.get_exam_type_display }}</small>
+                                </div>
+                                {% if exam.findings.exists %}
+                                <div>
+                                    {% if exam.findings.filter.is_abnormal.exists %}
+                                        <i class="fas fa-exclamation-triangle text-warning" title="Anomalies Detected"></i>
+                                    {% else %}
+                                        <i class="fas fa-check-circle text-success" title="Normal"></i>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if exam.impression %}
+                            <div class="mt-2">
+                                <small class="text-muted">{{ exam.impression|truncatewords:10 }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="comparison-viewer" id="timeline-viewer-{{ body_part }}">
+                        {% if exams.first.images.first %}
+                        <img src="{{ exams.first.images.first.image.url }}" 
+                            class="comparison-image-large" 
+                            id="timeline-image-{{ body_part }}"
+                            alt="Image timeline">
+                        <div class="image-info-overlay">
+                            <div id="timeline-info-{{ body_part }}">
+                                {{ exams.first.performed_date|date:"d/m/Y" }} - {{ exams.first.get_exam_type_display }}
+                </div>
+        </div>
+            <!-- Timeline controls -->
+            <div class="zoom-controls">
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-light" onclick="zoomTimelineImage('{{ body_part }}', 1.2)">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="btn btn-outline-light" onclick="zoomTimelineImage('{{ body_part }}', 0.8)">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="btn btn-outline-light" onclick="resetTimelineZoom('{{ body_part }}')">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <input type="range" class="brightness-slider" id="timeline-brightness-{{ body_part }}" 
+                   min="0" max="200" value="100" onchange="adjustTimelineBrightness('{{ body_part }}', this.value)">
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+            <!-- Side by Side Comparison -->
+            <div class="row comparison-view">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Selection of Examinations</h6>
+                        </div>
+                        <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+                            {% for exam in exams %}
+                            <div class="exam-comparison-item" 
+                                 data-exam-id="{{ exam.id }}"
+                                 data-body-part="{{ body_part }}"
+                                 data-exam-date="{{ exam.performed_date|date:'d/m/Y' }}"
+                                 data-exam-type="{{ exam.get_exam_type_display }}"
+                                 onclick="selectExamForComparison(this, '{{ exam.images.first.image.url|default:'' }}')">
+                                
+                                {% if exam.images.first %}
+                                <img src="{{ exam.images.first.image.url }}" 
+                                     class="comparison-image mb-2"
+                                     alt="Image d'examen">
+                                {% else %}
+                                <div class="comparison-image mb-2 d-flex align-items-center justify-content-center bg-light">
+                                    <i class="fas fa-image fa-2x text-muted"></i>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="exam-info">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <strong>{{ exam.performed_date|date:"d/m/Y" }}</strong>
+                                        {% if exam.findings.exists %}
+                                            {% if exam.findings.filter.is_abnormal.exists %}
+                                                <span class="badge bg-warning">Anomalies</span>
+                                            {% else %}
+                                                <span class="badge bg-success">Normal</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="text-muted small mb-2">
+                                        {{ exam.get_exam_type_display }}
+                                    </div>
+                                    
+                                    {% if exam.findings.exists %}
+                                    <div class="findings-preview">
+                                        {% for finding in exam.findings.all|slice:":2" %}
+                                        <span class="finding-badge {% if finding.is_abnormal %}finding-abnormal{% else %}finding-normal{% endif %}">
+                                            {{ finding.anatomical_region }}
+                                        </span>
+                                        {% endfor %}
+                                        {% if exam.findings.count > 2 %}
+                                        <span class="finding-badge bg-secondary text-white">
+                                            +{{ exam.findings.count|add:"-2" }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-9">
+                    <div class="row">
+                        <!-- First Comparison Panel -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Examen A</h6>
+                                    <span class="badge bg-primary" id="exam-a-date-{{ body_part }}">Select</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="comparison-viewer" id="viewer-a-{{ body_part }}">
+                                        <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                                                <p>Click on an exam to select it</p>
+                                            </div>
+                                        </div>
+                                        <div class="sync-controls">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-light" onclick="zoomImage('a', '{{ body_part }}', 1.2)">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-light" onclick="zoomImage('a', '{{ body_part }}', 0.8)">
+                                                    <i class="fas fa-search-minus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-light" onclick="resetZoom('a', '{{ body_part }}')">
+                                                    <i class="fas fa-expand-arrows-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Second Comparison Panel -->
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Examen B</h6>
+                                    <span class="badge bg-secondary" id="exam-b-date-{{ body_part }}">Select</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="comparison-viewer" id="viewer-b-{{ body_part }}">
+                                        <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-mouse-pointer fa-3x mb-3"></i>
+                                                <p>Click on a second exam to compare</p>
+                                            </div>
+                                        </div>
+                                        <div class="sync-controls">
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-light" onclick="zoomImage('b', '{{ body_part }}', 1.2)">
+                                                    <i class="fas fa-search-plus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-light" onclick="zoomImage('b', '{{ body_part }}', 0.8)">
+                                                    <i class="fas fa-search-minus"></i>
+                                                </button>
+                                                <button class="btn btn-outline-light" onclick="resetZoom('b', '{{ body_part }}')">
+                                                    <i class="fas fa-expand-arrows-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Findings Comparison -->
+                    <div class="findings-comparison mt-3" id="findings-comparison-{{ body_part }}" style="display: none;">
+                        <h6><i class="fas fa-microscope me-2"></i>Comparison of Findings</h6>
+                        <div class="row" id="findings-content-{{ body_part }}">
+                            <!-- Content will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if not forloop.last %}
+            <hr class="my-5">
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <!-- Action Buttons -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'patient_detail' patient.id %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Return to Patient
+                    </a>
+                    <div>
+                        <button type="button" class="btn btn-success" onclick="generateComparisonReport()">
+                            <i class="fas fa-file-pdf me-2"></i>Generate Comparison Report
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="exportComparison()">
+                            <i class="fas fa-download me-2"></i>Export Comparison
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    {% else %}
+        <!-- No Exams Available -->
+        <div class="text-center py-5">
+            <i class="fas fa-balance-scale fa-4x text-muted mb-3"></i>
+            <h5 class="text-muted">No exam available for comparison</h5>
+            <p class="text-muted">
+                This patient does not have any completed radiological exams available for comparison.
+            </p>
+            <a href="{% url 'patient_detail' patient.id %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Return to Patient
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">loading...</span>
+                </div>
+                <p class="mb-0">Report generation in progress...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/lightbox.min.js' %}"></script>
+<script>
+// Global variables for comparison state
+let comparisonState = {
+    selectedExams: {}, // body_part: {a: examData, b: examData}
+    currentMode: 'side-by-side',
+    syncSettings: {
+        zoom: false,
+        brightness: false
+    },
+    zoomLevels: {}, // viewer_id: zoomLevel
+    brightness: {} // viewer_id: brightness
+};
+
+// Initialize comparison functionality
+document.addEventListener('DOMContentLoaded', function() {
+    initializeComparison();
+    setupEventListeners();
+});
+
+function initializeComparison() {
+    // Initialize zoom levels and brightness for all viewers
+    document.querySelectorAll('.comparison-viewer').forEach(viewer => {
+        const viewerId = viewer.id;
+        comparisonState.zoomLevels[viewerId] = 1;
+        comparisonState.brightness[viewerId] = 100;
+    });
+    
+    // Set default mode
+    setComparisonMode('side-by-side');
+}
+
+function setupEventListeners() {
+    // Mode switchers
+    document.getElementById('side-by-side-mode').addEventListener('click', () => setComparisonMode('side-by-side'));
+    document.getElementById('overlay-mode').addEventListener('click', () => setComparisonMode('overlay'));
+    document.getElementById('timeline-mode').addEventListener('click', () => setComparisonMode('timeline'));
+    
+    // Sync controls
+    document.getElementById('sync-zoom').addEventListener('click', toggleSyncZoom);
+    document.getElementById('sync-brightness').addEventListener('click', toggleSyncBrightness);
+    
+    // Body part filter
+    document.getElementById('body-part-filter').addEventListener('change', filterBodyParts);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+    
+    // Window resize handler
+    window.addEventListener('resize', handleWindowResize);
+}
+
+function setComparisonMode(mode) {
+    comparisonState.currentMode = mode;
+    
+    // Update mode buttons
+    document.querySelectorAll('.comparison-controls .btn-group button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    switch(mode) {
+        case 'side-by-side':
+            document.getElementById('side-by-side-mode').classList.add('active');
+            document.querySelectorAll('.comparison-view').forEach(view => view.style.display = 'block');
+            document.querySelectorAll('.timeline-view').forEach(view => view.style.display = 'none');
+            break;
+        case 'overlay':
+            document.getElementById('overlay-mode').classList.add('active');
+            document.querySelectorAll('.comparison-view').forEach(view => view.style.display = 'block');
+            document.querySelectorAll('.timeline-view').forEach(view => view.style.display = 'none');
+            enableOverlayMode();
+            break;
+        case 'timeline':
+            document.getElementById('timeline-mode').classList.add('active');
+            document.querySelectorAll('.comparison-view').forEach(view => view.style.display = 'none');
+            document.querySelectorAll('.timeline-view').forEach(view => view.style.display = 'block');
+            break;
+    }
+}
+
+function selectExamForComparison(element, imageUrl) {
+    const examId = element.dataset.examId;
+    const bodyPart = element.dataset.bodyPart;
+    const examDate = element.dataset.examDate;
+    const examType = element.dataset.examType;
+    
+    // Initialize body part in comparison state if not exists
+    if (!comparisonState.selectedExams[bodyPart]) {
+        comparisonState.selectedExams[bodyPart] = {};
+    }
+    
+    // Remove previous selection styling
+    document.querySelectorAll(`[data-body-part="${bodyPart}"] .exam-comparison-item`).forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // Add selection styling
+    element.classList.add('selected');
+    
+    // Determine which slot to fill (A or B)
+    let slot = 'a';
+    if (comparisonState.selectedExams[bodyPart].a && comparisonState.selectedExams[bodyPart].a.id !== examId) {
+        slot = 'b';
+    }
+    
+    // Store exam data
+    comparisonState.selectedExams[bodyPart][slot] = {
+        id: examId,
+        date: examDate,
+        type: examType,
+        imageUrl: imageUrl
+    };
+    
+    // Update viewer
+    updateComparisonViewer(bodyPart, slot, {
+        id: examId,
+        date: examDate,
+        type: examType,
+        imageUrl: imageUrl
+    });
+    
+    // Load and compare findings if both exams are selected
+    if (comparisonState.selectedExams[bodyPart].a && comparisonState.selectedExams[bodyPart].b) {
+        loadFindingsComparison(bodyPart);
+    }
+}
+
+function updateComparisonViewer(bodyPart, slot, examData) {
+    const viewerId = `viewer-${slot}-${bodyPart}`;
+    const viewer = document.getElementById(viewerId);
+    const dateElement = document.getElementById(`exam-${slot}-date-${bodyPart}`);
+    
+    if (!viewer || !examData.imageUrl) return;
+    
+    // Update date badge
+    dateElement.textContent = `${examData.date} - ${examData.type}`;
+    dateElement.className = slot === 'a' ? 'badge bg-primary' : 'badge bg-success';
+    
+    // Create image element
+    const img = document.createElement('img');
+    img.src = examData.imageUrl;
+    img.className = 'comparison-image-large';
+    img.alt = `Examen ${slot.toUpperCase()} - ${examData.date}`;
+    img.style.transform = `scale(${comparisonState.zoomLevels[viewerId] || 1})`;
+    img.style.filter = `brightness(${comparisonState.brightness[viewerId] || 100}%)`;
+    
+    // Add loading state
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-overlay';
+    loadingDiv.innerHTML = '<div class="spinner-border text-light" role="status"></div>';
+    
+    viewer.innerHTML = '';
+    viewer.appendChild(loadingDiv);
+    viewer.appendChild(img);
+    
+    // Add image info overlay
+    const infoOverlay = document.createElement('div');
+    infoOverlay.className = 'image-info-overlay';
+    infoOverlay.innerHTML = `
+        <div><strong>${examData.date}</strong></div>
+        <div>${examData.type}</div>
+        <div>Examen ${slot.toUpperCase()}</div>
+    `;
+    viewer.appendChild(infoOverlay);
+    
+    // Add interaction handlers
+    img.addEventListener('load', () => {
+        loadingDiv.remove();
+        setupImageInteractions(img, viewerId);
+    });
+    
+    img.addEventListener('error', () => {
+        loadingDiv.innerHTML = '<div class="text-light"><i class="fas fa-exclamation-triangle"></i> loading Error</div>';
+    });
+}
+
+function setupImageInteractions(img, viewerId) {
+    let isDragging = false;
+    let startX, startY, scrollLeft, scrollTop;
+    
+    // Mouse wheel zoom
+    img.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+        const currentZoom = comparisonState.zoomLevels[viewerId] || 1;
+        const newZoom = Math.max(0.1, Math.min(5, currentZoom * zoomDelta));
+        
+        comparisonState.zoomLevels[viewerId] = newZoom;
+        img.style.transform = `scale(${newZoom})`;
+        
+        // Sync zoom if enabled
+        if (comparisonState.syncSettings.zoom) {
+            syncZoomToAll(newZoom, viewerId);
+        }
+    });
+    
+    // Pan functionality
+    img.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.pageX - img.offsetLeft;
+        startY = e.pageY - img.offsetTop;
+        scrollLeft = img.scrollLeft;
+        scrollTop = img.scrollTop;
+        img.style.cursor = 'grabbing';
+    });
+    
+    img.addEventListener('mouseleave', () => {
+        isDragging = false;
+        img.style.cursor = 'grab';
+    });
+    
+    img.addEventListener('mouseup', () => {
+        isDragging = false;
+        img.style.cursor = 'grab';
+    });
+    
+    img.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - img.offsetLeft;
+        const y = e.pageY - img.offsetTop;
+        const walkX = (x - startX) * 2;
+        const walkY = (y - startY) * 2;
+        img.scrollLeft = scrollLeft - walkX;
+        img.scrollTop = scrollTop - walkY;
+    });
+    
+    img.style.cursor = 'grab';
+}
+
+function zoomImage(slot, bodyPart, factor) {
+    const viewerId = `viewer-${slot}-${bodyPart}`;
+    const img = document.querySelector(`#${viewerId} .comparison-image-large`);
+    
+    if (!img) return;
+    
+    const currentZoom = comparisonState.zoomLevels[viewerId] || 1;
+    const newZoom = Math.max(0.1, Math.min(5, currentZoom * factor));
+    
+    comparisonState.zoomLevels[viewerId] = newZoom;
+    img.style.transform = `scale(${newZoom})`;
+    
+    // Sync zoom if enabled
+    if (comparisonState.syncSettings.zoom) {
+        syncZoomToAll(newZoom, viewerId);
+    }
+}
+
+function resetZoom(slot, bodyPart) {
+    const viewerId = `viewer-${slot}-${bodyPart}`;
+    const img = document.querySelector(`#${viewerId} .comparison-image-large`);
+    
+    if (!img) return;
+    
+    comparisonState.zoomLevels[viewerId] = 1;
+    img.style.transform = 'scale(1)';
+    
+    // Sync zoom if enabled
+    if (comparisonState.syncSettings.zoom) {
+        syncZoomToAll(1, viewerId);
+    }
+}
+
+function syncZoomToAll(zoomLevel, excludeViewerId) {
+    Object.keys(comparisonState.zoomLevels).forEach(viewerId => {
+        if (viewerId !== excludeViewerId) {
+            const img = document.querySelector(`#${viewerId} .comparison-image-large`);
+            if (img) {
+                comparisonState.zoomLevels[viewerId] = zoomLevel;
+                img.style.transform = `scale(${zoomLevel})`;
+            }
+        }
+    });
+}
+
+function toggleSyncZoom() {
+    comparisonState.syncSettings.zoom = !comparisonState.syncSettings.zoom;
+    const btn = document.getElementById('sync-zoom');
+    
+    if (comparisonState.syncSettings.zoom) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-link"></i> Zoom synchronisé';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-unlink"></i> Synchroniser zoom';
+    }
+}
+
+function toggleSyncBrightness() {
+    comparisonState.syncSettings.brightness = !comparisonState.syncSettings.brightness;
+    const btn = document.getElementById('sync-brightness');
+    
+    if (comparisonState.syncSettings.brightness) {
+        btn.classList.add('active');
+        btn.innerHTML = '<i class="fas fa-adjust"></i> Synchronized brightness';
+    } else {
+        btn.classList.remove('active');
+        btn.innerHTML = '<i class="fas fa-adjust"></i> Synchronize brightness';
+    }
+}
+
+function loadFindingsComparison(bodyPart) {
+    const examA = comparisonState.selectedExams[bodyPart].a;
+    const examB = comparisonState.selectedExams[bodyPart].b;
+    
+    if (!examA || !examB) return;
+    
+    // Show findings comparison section
+    const comparisonSection = document.getElementById(`findings-comparison-${bodyPart}`);
+    const contentDiv = document.getElementById(`findings-content-${bodyPart}`);
+    
+    comparisonSection.style.display = 'block';
+    
+    // Fetch findings data via AJAX
+    Promise.all([
+        fetchExamFindings(examA.id),
+        fetchExamFindings(examB.id)
+    ]).then(([findingsA, findingsB]) => {
+        renderFindingsComparison(contentDiv, findingsA, findingsB, examA, examB);
+    }).catch(error => {
+        console.error('Error loading findings:', error);
+        contentDiv.innerHTML = '<div class="alert alert-warning">Error loading the findings</div>';
+    });
+}
+
+function fetchExamFindings(examId) {
+    return fetch(`/api/radio/${examId}/findings/`)
+        .then(response => response.json())
+        .catch(() => ({ findings: [], impression: '', recommendations: '' }));
+}
+
+function renderFindingsComparison(container, findingsA, findingsB, examA, examB) {
+    const html = `
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">Examen A - ${examA.date}</h6>
+                </div>
+                <div class="card-body">
+                    ${renderFindingsList(findingsA.findings)}
+                    ${findingsA.impression ? `<div class="mt-3"><strong>Impression:</strong><br>${findingsA.impression}</div>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">Examen B - ${examB.date}</h6>
+                </div>
+                <div class="card-body">
+                    ${renderFindingsList(findingsB.findings)}
+                    ${findingsB.impression ? `<div class="mt-3"><strong>Impression:</strong><br>${findingsB.impression}</div>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-12 mt-3">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">Analyse comparative</h6>
+                </div>
+                <div class="card-body">
+                    ${generateComparisonAnalysis(findingsA.findings, findingsB.findings)}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
+function renderFindingsList(findings) {
+    if (!findings || findings.length === 0) {
+        return '<div class="text-muted">No findings recorded</div>';
+    }
+    
+    return findings.map(finding => `
+        <div class="finding-item mb-2 p-2 border rounded">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>${finding.anatomical_region}</strong>
+                    <span class="badge ${finding.is_abnormal ? 'bg-warning' : 'bg-success'} ms-2">
+                        ${finding.is_abnormal ? 'Anormal' : 'Normal'}
+                    </span>
+                </div>
+                <small class="text-muted">${finding.certainty}</small>
+            </div>
+            <div class="mt-1">${finding.description}</div>
+            ${finding.measurement ? `<div class="text-muted small">Mesure: ${finding.measurement}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function generateComparisonAnalysis(findingsA, findingsB) {
+    const analysis = [];
+    
+    // Count abnormal findings
+    const abnormalA = findingsA.filter(f => f.is_abnormal).length;
+    const abnormalB = findingsB.filter(f => f.is_abnormal).length;
+    
+    if (abnormalA > abnormalB) {
+        analysis.push(`<div class="evolution-indicator evolution-improved">
+            <i class="fas fa-arrow-down"></i> Improvement: ${abnormalA - abnormalB} fewer anomaly/anomalies
+        </div>`);
+    } else if (abnormalB > abnormalA) {
+        analysis.push(`<div class="evolution-indicator evolution-worsened">
+            <i class="fas fa-arrow-up"></i> Worsening: ${abnormalB - abnormalA} more anomaly/anomalies
+        </div>`);
+    } else {
+        analysis.push(`<div class="evolution-indicator evolution-stable">
+            <i class="fas fa-equals"></i> Stable: Same number of anomalies
+        </div>`);
+    }
+    
+    // Identify new, resolved, and persistent findings
+    const regionsA = new Set(findingsA.map(f => f.anatomical_region));
+    const regionsB = new Set(findingsB.map(f => f.anatomical_region));
+    
+    const newRegions = [...regionsB].filter(r => !regionsA.has(r));
+    const resolvedRegions = [...regionsA].filter(r => !regionsB.has(r));
+    const persistentRegions = [...regionsA].filter(r => regionsB.has(r));
+    
+    if (newRegions.length > 0) {
+        analysis.push(`<div class="evolution-indicator evolution-new">
+            <i class="fas fa-plus"></i> News: ${newRegions.join(', ')}
+        </div>`);
+    }
+    
+    if (resolvedRegions.length > 0) {
+        analysis.push(`<div class="evolution-indicator evolution-improved">
+            <i class="fas fa-check"></i> Resolved: ${resolvedRegions.join(', ')}
+        </div>`);
+    }
+    
+    if (persistentRegions.length > 0) {
+        analysis.push(`<div class="evolution-indicator evolution-stable">
+            <i class="fas fa-clock"></i> Persistantes: ${persistentRegions.join(', ')}
+        </div>`);
+    }
+    
+    return analysis.join(' ');
+}
+
+// Timeline functions
+function selectTimelineExam(examId, imageUrl, bodyPart) {
+    // Update active timeline item
+    document.querySelectorAll(`[data-body-part="${bodyPart}"] .timeline-item`).forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    document.querySelector(`[data-exam-id="${examId}"]`).classList.add('active');
+    
+    // Update timeline viewer
+    const timelineImg = document.getElementById(`timeline-image-${bodyPart}`);
+    const timelineInfo = document.getElementById(`timeline-info-${bodyPart}`);
+    
+    if (timelineImg && imageUrl) {
+        timelineImg.src = imageUrl;
+        
+        // Update info
+        const examElement = document.querySelector(`[data-exam-id="${examId}"]`);
+        if (examElement && timelineInfo) {
+            timelineInfo.innerHTML = `
+                ${examElement.dataset.examDate} - ${examElement.dataset.examType}
+            `;
+        }
+    }
+}
+
+function zoomTimelineImage(bodyPart, factor) {
+    const img = document.getElementById(`timeline-image-${bodyPart}`);
+    const viewerId = `timeline-viewer-${bodyPart}`;
+    
+    if (!img) return;
+    
+    const currentZoom = comparisonState.zoomLevels[viewerId] || 1;
+    const newZoom = Math.max(0.1, Math.min(5, currentZoom * factor));
+    
+    comparisonState.zoomLevels[viewerId] = newZoom;
+    img.style.transform = `scale(${newZoom})`;
+}
+
+function resetTimelineZoom(bodyPart) {
+    const img = document.getElementById(`timeline-image-${bodyPart}`);
+    const viewerId = `timeline-viewer-${bodyPart}`;
+    
+    if (!img) return;
+    
+    comparisonState.zoomLevels[viewerId] = 1;
+    img.style.transform = 'scale(1)';
+}
+
+function adjustTimelineBrightness(bodyPart, value) {
+    const img = document.getElementById(`timeline-image-${bodyPart}`);
+    const viewerId = `timeline-viewer-${bodyPart}`;
+    
+    if (!img) return;
+    
+    comparisonState.brightness[viewerId] = value;
+    img.style.filter = `brightness(${value}%)`;
+}
+
+function filterBodyParts() {
+    const selectedBodyPart = document.getElementById('body-part-filter').value;
+    
+    document.querySelectorAll('.body-part-section').forEach(section => {
+        if (!selectedBodyPart || section.dataset.bodyPart === selectedBodyPart) {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    });
+}
+
+function handleKeyboardShortcuts(e) {
+    // Only handle shortcuts when not in input fields
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    switch(e.key) {
+        case '1':
+            setComparisonMode('side-by-side');
+            break;
+        case '2':
+            setComparisonMode('overlay');
+            break;
+        case '3':
+            setComparisonMode('timeline');
+            break;
+        case 'z':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                // Reset all zoom levels
+                Object.keys(comparisonState.zoomLevels).forEach(viewerId => {
+                    comparisonState.zoomLevels[viewerId] = 1;
+                    const img = document.querySelector(`#${viewerId} .comparison-image-large`);
+                    if (img) img.style.transform = 'scale(1)';
+                });
+            }
+            break;
+        case 's':
+            if (e.ctrlKey) {
+                e.preventDefault();
+                toggleSyncZoom();
+            }
+            break;
+    }
+}
+
+function handleWindowResize() {
+    // Recalculate image dimensions and positions
+    document.querySelectorAll('.comparison-image-large').forEach(img => {
+        // Trigger reflow to ensure proper positioning
+        img.style.display = 'none';
+        img.offsetHeight; // Trigger reflow
+        img.style.display = '';
+    });
+}
+
+function enableOverlayMode() {
+    // Implementation for overlay comparison mode
+    document.querySelectorAll('.comparison-viewer').forEach(viewer => {
+        if (viewer.querySelector('.comparison-image-large')) {
+            viewer.classList.add('overlay-mode');
+            
+            // Add comparison slider
+            if (!viewer.querySelector('.comparison-slider')) {
+                const slider = document.createElement('div');
+                slider.className = 'comparison-slider';
+                slider.innerHTML = '<div class="comparison-slider-handle"></div>';
+                viewer.appendChild(slider);
+                
+                setupOverlaySlider(viewer, slider);
+            }
+        }
+    });
+}
+
+function setupOverlaySlider(viewer, slider) {
+    const handle = slider.querySelector('.comparison-slider-handle');
+    let isDragging = false;
+    
+    handle.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const rect = slider.getBoundingClientRect();
+        const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const percentage = (x / rect.width) * 100;
+        
+        handle.style.left = `${percentage}%`;
+        
+        // Update overlay opacity
+        const images = viewer.querySelectorAll('.comparison-image-large');
+        if (images.length >= 2) {
+            images[1].style.clipPath = `inset(0 ${100 - percentage}% 0 0)`;
+        }
+    });
+    
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+}
+
+function generateComparisonReport() {
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    
+    // Collect comparison data
+    const reportData = {
+        patient_id: '{{ patient.id }}',
+        selected_exams: comparisonState.selectedExams,
+        comparison_mode: comparisonState.currentMode,
+        analysis_date: new Date().toISOString()
+    };
+    
+    // Generate report via AJAX
+    fetch('/api/generate-comparison-report/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify(reportData)
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `comparison_report_{{ patient.user.last_name }}_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        loadingModal.hide();
+    })
+    .catch(error => {
+        console.error('Error generating report:', error);
+        loadingModal.hide();
+        alert('Error generating report');
+    });
+}
+
+function exportComparison() {
+    const exportData = {
+        patient: {
+            name: '{{ patient.user.get_full_name }}',
+            age: '{{ patient.age }}',
+            gender: '{{ patient.get_gender_display }}'
+        },
+        exams: comparisonState.selectedExams,
+        export_date: new Date().toISOString(),
+        mode: comparisonState.currentMode
+    };
+    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `radio_comparison_{{ patient.user.last_name }}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Utility function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Initialize lightbox for image viewing
+lightbox.option({
+    'resizeDuration': 200,
+    'wrapAround': true,
+    'showImageNumberLabel': true
+});
+
+// Auto-save comparison state
+setInterval(() => {
+    localStorage.setItem('radio_comparison_state', JSON.stringify(comparisonState));
+}, 30000); // Save every 30 seconds
+
+// Load saved state on page load
+const savedState = localStorage.getItem('radio_comparison_state');
+if (savedState) {
+    try {
+        const parsed = JSON.parse(savedState);
+        // Only restore if it's for the same patient
+        if (parsed.patient_id === '{{ patient.id }}') {
+            comparisonState = { ...comparisonState, ...parsed };
+        }
+    } catch (e) {
+        console.warn('Failed to restore comparison state:', e);
+    }
+}
+</script>
+{% endblock %}
