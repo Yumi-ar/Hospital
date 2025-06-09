@@ -29,19 +29,22 @@
         </div>
     </div>
 
-
-
     <div class="col-md-4">
-        {% if wallet %}
-            <p>Identité: {{ wallet.user.username }}</p>
-            <p>Clé Publique: {{ wallet.public_key }}</p>
-            <a href="{% url 'download_public_key' %}">Télécharger la clé publique</a>
-        {% else %}
-            <p>Aucun portefeuille médical trouvé.</p>
-        {% endif %}
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-wallet"></i> Wallet Information
+            </div>
+            <div class="card-body">
+                {% if wallet %}
+                    <p><strong>Identité:</strong> {{ wallet.user.username }}</p>
+                    <p><strong>Clé Publique:</strong> {{ wallet.public_key }}</p>
+                    <a href="{% url 'download_public_key' %}" class="btn btn-sm btn-success">Download the public key</a>
+                {% else %}
+                    <p>No medical wallet found.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
-
-
 
     <div class="col-md-4">
         <div class="card">
