@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from cryptography.fernet import Fernet
+from django_cryptography.fields import encrypt
+
 import os
 
 class User(AbstractUser):
@@ -638,7 +640,7 @@ class RadiologicalStatistics(models.Model):
 class MedicalWallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     public_key = models.TextField()
-    private_key = models.TextField()
+    private_key = encrypt(models.TextField())
     created_at = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f"Wallet for {self.user.username}"        
