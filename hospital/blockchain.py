@@ -1,589 +1,646 @@
-import hashlib
-import json
-import time
-import os
-import binascii
-import datetime
-import collections
-from datetime import datetime
-from typing import Dict, List, Optional, Union
-import requests
-from django.conf import settings
+from django.db import models
+from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
-from django.core.cache import cache
-import logging
-import ipfshttpclient
-from web3 import Web3
-from eth_account import Account
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import PKCS1_OAEP
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash import SHA256
+from cryptography.fernet import Fernet
+from django_cryptography.fields import encrypt
 
-# Configuration du logging
-logger = logging.getLogger(__name__)
+import os
 
-class MedicalWallet:
-    """Portefeuille médical avec clés RSA pour les utilisateurs (patients/médecins)"""
+class User(AbstractUser):
+    USER_TYPES = (
+        ('patient', 'Patient'),
+        ('doctor', 'Doctor'),
+        ('admin', 'Administrator'),
+    )
+    user_type = models.CharField(max_length=10, choices=USER_TYPES)
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
     
-    def __init__(self, user_id: str = None, key_size: int = 2048):
-        if not RSA_AVAILABLE:
-            raise Exception("RSA non disponible - impossible de créer un portefeuille")
-        
-        self.user_id = user_id
-        self.key_size = max(1024, min(key_size, 4096))  # Sécurité minimale 1024, max 4096
-        
-        # Générer les clés RSA
-        random_generator = Crypto.Random.new().read
-        self._private_key = RSA.generate(self.key_size, random_generator)
-        self._public_key = self._private_key.publickey()
-        self._signer = PKCS1_v1_5.new(self._private_key)
-        
-        logger.info(f"Portefeuille créé pour {user_id} avec clés RSA {key_size} bits")
+    def __str__(self):
+        return f"{self.username} ({self.get_user_type_display()})"
+
+
+class Patient(models.Model):
+    BLOOD_TYPE_CHOICES = [
+        ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'),
+        ('O+', 'O+'), ('O-', 'O-'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    date_of_birth = models.DateField()
+    phone_number = models.CharField(max_length=15)  # Updated field name
+    address = models.TextField()
+    emergency_contact = models.CharField(max_length=100)
+    emergency_phone = models.CharField(max_length=15)
+    blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True)
+    allergies = models.TextField(blank=True)
+    medical_history = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name}"
     
     @property
-    def identity(self) -> str:
-        """Identité unique basée sur la clé publique"""
-        return binascii.hexlify(self._public_key.exportKey(format='DER')).decode('ascii')
+    def age(self):
+        from datetime import date
+        today = date.today()
+        return today.year - self.date_of_birth.year - ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+
+  
+
+class Doctor(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    specialization = models.CharField(max_length=100)
+    license_number = models.CharField(max_length=50, unique=True)
+    phone_number = models.CharField(max_length=20)
+    clinic_address = models.TextField()
+    years_of_experience = models.PositiveIntegerField()
+    medical_degree = models.FileField(upload_to='doctor_documents/', blank=True, null=True)
+    license_document = models.FileField(upload_to='doctor_documents/', blank=True, null=True)
+    bio = models.TextField(blank=True)
+    is_approved = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Dr. {self.user.first_name} {self.user.last_name}"
+
+    @property
+    def full_name(self):
+        return f"Dr. {self.user.first_name} {self.user.last_name}"
+
+  
+class MedicalDocument(models.Model):
+    DOCUMENT_TYPES = (
+        ('prescription', 'Ordonnance'),
+        ('diagnosis', 'Diagnostic'),
+        ('lab_result', 'Résultat de laboratoire'),
+        ('imaging', 'Imagerie médicale'),
+        ('consultation', 'Compte-rendu de consultation'),
+    )
+    
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='medical_documents')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='created_documents')
+    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPES)
+    title = models.CharField(max_length=200)
+    content = models.TextField()  # Encrypted content
+    file_attachment = models.FileField(upload_to='medical_docs/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.patient}"
+
+
+class AccessPermission(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='access_permissions')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='patient_access')
+    granted_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    permissions = models.JSONField(default=dict)  # Specific permissions
+    granted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Track who granted access
+   
+
+    class Meta:
+        unique_together = ['patient', 'doctor']
+    
+    def __str__(self):
+        return f"Access: {self.doctor} -> {self.patient}"
+
+class AccessRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'En attente'),
+        ('approved', 'Approuvée'),
+        ('denied', 'Refusée'),
+        ('expired', 'Expirée'),
+    )
+    
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='access_requests')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='access_requests')
+    reason = models.TextField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    responded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Track who responded
+    
+    class Meta:
+        unique_together = ['doctor', 'patient']  # Prevent duplicate requests
+    
+    def __str__(self):
+        return f"Request: {self.doctor} -> {self.patient} ({self.status})"
+
+class Consultation(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='consultations')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='consultations')
+    date = models.DateTimeField()
+    symptoms = models.TextField()
+    diagnosis = models.TextField()
+    treatment = models.TextField()
+    notes = models.TextField(blank=True)
+    cost = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-date']
+    
+    def __str__(self):
+        return f"Consultation: {self.patient} - {self.date.strftime('%Y-%m-%d')}"
+
+class Prescription(models.Model):
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='prescriptions')
+    medication_name = models.CharField(max_length=200)
+    dosage = models.CharField(max_length=100)
+    instructions = models.TextField()
+    duration_days = models.IntegerField()
+    digital_signature = models.TextField()  # Digital signature for security
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.medication_name} - {self.consultation.patient}"
+
+class Reimbursement(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'En attente'),
+        ('approved', 'Approuvé'),
+        ('rejected', 'Rejeté'),
+        ('paid', 'Payé'),
+    )
+    
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='reimbursements')
+    consultation = models.ForeignKey(Consultation, on_delete=models.CASCADE, related_name='reimbursements')
+    amount_requested = models.DecimalField(max_digits=20, decimal_places=2)
+    amount_approved = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)  # Track who processed
+    notes = models.TextField(blank=True)  # Admin notes
+    
+    def __str__(self):
+        return f"Reimbursement: {self.patient} - {self.amount_requested}DA"
+
+class ActivityLog(models.Model):
+    ACTION_TYPES = (
+        ('login', 'Connexion'),
+        ('logout', 'Déconnexion'),
+        ('register', 'Inscription'),
+        ('view_document', 'Consultation document'),
+        ('download_document', 'Téléchargement document'),
+        ('delete_document', 'Suppression document'),
+        ('grant_access', 'Autorisation accordée'),
+        ('revoke_access', 'Autorisation révoquée'),
+        ('create_prescription', 'Création ordonnance'),
+        ('create_admin', 'Création administrateur'),
+        ('approve_doctor', 'Approbation médecin'),
+        ('approve_patient', 'Approbation patient'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, null=True, blank=True, related_name='activity_logs')
+    action = models.CharField(max_length=20, choices=ACTION_TYPES)
+    description = models.TextField()
+    ip_address = models.GenericIPAddressField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-timestamp']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_action_display()} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
+
+# Admin-specific model for system settings
+class SystemSettings(models.Model):
+    setting_key = models.CharField(max_length=100, unique=True)
+    setting_value = models.TextField()
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.setting_key
+
+# Encryption utilities
+class EncryptionMixin:
+    @staticmethod 
+    def encrypt_data(data):
+        """Encrypt sensitive medical data"""
+        key = os.environ.get('MEDICAL_ENCRYPTION_KEY')
+        if not key:
+            key = Fernet.generate_key()
+        f = Fernet(key)
+        return f.encrypt(data.encode()).decode()
+    
+    @staticmethod
+    def decrypt_data(encrypted_data):
+        """Decrypt sensitive medical data"""
+        key = os.environ.get('MEDICAL_ENCRYPTION_KEY') 
+        f = Fernet(key.encode())
+        return f.decrypt(encrypted_data.encode()).decode()
+class MedicalAnalysis(models.Model):
+    ANALYSIS_TYPES = [
+        ('blood_test', 'Analyse de sang'),
+        ('urine_test', 'Analyse d\'urine'),
+        ('radiology', 'Radiologie'),
+        ('cardiology', 'Cardiologie'),
+        ('pathology', 'Anatomopathologie'),
+        ('microbiology', 'Microbiologie'),
+        ('biochemistry', 'Biochimie'),
+        ('other', 'Autre'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('completed', 'Terminé'),
+        ('cancelled', 'Annulé'),
+    ]
+    
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, related_name='analyses')
+    doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE, related_name='analyses')
+    consultation = models.ForeignKey('Consultation', on_delete=models.CASCADE, null=True, blank=True)
+    
+    analysis_type = models.CharField(max_length=20, choices=ANALYSIS_TYPES)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    indication = models.TextField(help_text="Raison de l'analyse")
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Dates
+    ordered_date = models.DateTimeField(auto_now_add=True)
+    expected_date = models.DateTimeField(null=True, blank=True)
+    completed_date = models.DateTimeField(null=True, blank=True)
+    
+    # Results
+    results = models.TextField(blank=True, help_text="Résultats de l'analyse")
+    interpretation = models.TextField(blank=True, help_text="Interprétation médicale")
+    recommendations = models.TextField(blank=True, help_text="Recommandations")
+    
+    # Technical details
+    laboratory = models.CharField(max_length=200, blank=True)
+    technician = models.CharField(max_length=200, blank=True)
+    
+    # Files
+    result_document = models.FileField(upload_to='analysis_results/', null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-ordered_date']
+        verbose_name = "Analyse médicale"
+        verbose_name_plural = "Analyses médicales"
+    
+    def __str__(self):
+        return f"{self.title} - {self.patient.user.get_full_name()}"
+
+class AnalysisParameter(models.Model):
+    """Individual test parameters within an analysis"""
+    analysis = models.ForeignKey(MedicalAnalysis, on_delete=models.CASCADE, related_name='parameters')
+    
+    parameter_name = models.CharField(max_length=100)
+    value = models.CharField(max_length=100)
+    unit = models.CharField(max_length=50, blank=True)
+    reference_range = models.CharField(max_length=100, blank=True)
+    is_abnormal = models.BooleanField(default=False)
+    comment = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['parameter_name']
+    
+    def __str__(self):
+        return f"{self.parameter_name}: {self.value}"
+
+class RadiologicalExam(models.Model):
+    """Model for radiological examinations"""
+    
+    EXAM_TYPE_CHOICES = [
+        ('xray', 'Radiographie standard'),
+        ('ct', 'Scanner (CT)'),
+        ('mri', 'IRM'),
+        ('ultrasound', 'Échographie'),
+        ('mammography', 'Mammographie'),
+        ('fluoroscopy', 'Fluoroscopie'),
+        ('angiography', 'Angiographie'),
+        ('nuclear', 'Médecine nucléaire'),
+        ('pet', 'TEP (PET Scan)'),
+        ('bone_scan', 'Scintigraphie osseuse'),
+    ]
+    
+    BODY_PART_CHOICES = [
+        # Thorax
+        ('chest', 'Thorax'),
+        ('lung', 'Poumons'),
+        ('heart', 'Cœur'),
+        
+        # Abdomen
+        ('abdomen', 'Abdomen'),
+        ('pelvis', 'Bassin'),
+        ('kidney', 'Reins'),
+        ('liver', 'Foie'),
+        ('gallbladder', 'Vésicule biliaire'),
+        
+        # Système musculo-squelettique
+        ('skull', 'Crâne'),
+        ('cervical_spine', 'Rachis cervical'),
+        ('thoracic_spine', 'Rachis thoracique'),
+        ('lumbar_spine', 'Rachis lombaire'),
+        ('shoulder', 'Épaule'),
+        ('arm', 'Bras'),
+        ('elbow', 'Coude'),
+        ('forearm', 'Avant-bras'),
+        ('wrist', 'Poignet'),
+        ('hand', 'Main'),
+        ('hip', 'Hanche'),
+        ('thigh', 'Cuisse'),
+        ('knee', 'Genou'),
+        ('leg', 'Jambe'),
+        ('ankle', 'Cheville'),
+        ('foot', 'Pied'),
+        
+        # Autres
+        ('brain', 'Cerveau'),
+        ('neck', 'Cou'),
+        ('breast', 'Sein'),
+        ('whole_body', 'Corps entier'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'En attente'),
+        ('scheduled', 'Programmé'),
+        ('in_progress', 'En cours'),
+        ('completed', 'Terminé'),
+        ('cancelled', 'Annulé'),
+        ('postponed', 'Reporté'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('routine', 'Routine'),
+        ('urgent', 'Urgent'),
+        ('emergent', 'Très urgent'),
+        ('stat', 'Immédiat'),
+    ]
+    
+    IMAGE_QUALITY_CHOICES = [
+        ('excellent', 'Excellente'),
+        ('good', 'Bonne'),
+        ('adequate', 'Adéquate'),
+        ('poor', 'Médiocre'),
+        ('non_diagnostic', 'Non diagnostique'),
+    ]
+    
+    # Basic information
+    patient = models.ForeignKey('Patient', on_delete=models.CASCADE, related_name='radiological_exams')
+    doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE, related_name='ordered_radios')
+    consultation = models.ForeignKey('Consultation', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Exam details
+    exam_type = models.CharField(max_length=20, choices=EXAM_TYPE_CHOICES)
+    body_part = models.CharField(max_length=30, choices=BODY_PART_CHOICES)
+    clinical_indication = models.TextField(help_text="Indication clinique pour l'examen")
+    
+    # Scheduling
+    ordered_date = models.DateTimeField(default=timezone.now)
+    scheduled_date = models.DateTimeField(null=True, blank=True)
+    performed_date = models.DateTimeField(null=True, blank=True)
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='routine')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='pending')
+    
+    # Location and staff
+    radiology_center = models.CharField(max_length=200, blank=True)
+    radiographer = models.CharField(max_length=100, blank=True)
+    reporting_radiologist = models.CharField(max_length=100, blank=True)
+    
+    # Technical details
+    contrast_used = models.BooleanField(default=False)
+    contrast_agent = models.CharField(max_length=100, blank=True)
+    radiation_dose = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, help_text="Dose en mGy")
+    technical_parameters = models.TextField(blank=True, help_text="kV, mAs, épaisseur de coupe, etc.")
+    
+    # Results
+    description = models.TextField(blank=True, help_text="Description détaillée des constatations")
+    impression = models.TextField(blank=True, help_text="Impression diagnostique")
+    recommendations = models.TextField(blank=True)
+    
+    # Quality control
+    image_quality = models.CharField(max_length=15, choices=IMAGE_QUALITY_CHOICES, blank=True)
+    artifacts_present = models.BooleanField(default=False)
+    artifacts_description = models.TextField(blank=True)
+    
+    # Follow-up
+    follow_up_required = models.BooleanField(default=False)
+    follow_up_period = models.IntegerField(null=True, blank=True, help_text="Jours")
+    follow_up_instructions = models.TextField(blank=True)
+    
+    # File management
+    images_path = models.CharField(max_length=500, blank=True)
+    dicom_study_uid = models.CharField(max_length=100, blank=True)
+    pacs_number = models.CharField(max_length=50, blank=True)
+    report_document = models.CharField(max_length=500, blank=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-ordered_date']
+        verbose_name = "Examen radiologique"
+        verbose_name_plural = "Examens radiologiques"
+    
+    def __str__(self):
+        return f"{self.get_exam_type_display()} - {self.get_body_part_display()} - {self.patient.user.get_full_name()}"
     
     @property
-    def public_key_pem(self) -> str:
-        """Clé publique au format PEM"""
-        return self._public_key.exportKey(format='PEM').decode('ascii')
+    def is_overdue(self):
+        """Check if scheduled exam is overdue"""
+        if self.scheduled_date and self.status in ['pending', 'scheduled']:
+            return timezone.now() > self.scheduled_date
+        return False
     
     @property
-    def private_key_pem(self) -> str:
-        """Clé privée au format PEM (à utiliser avec précaution)"""
-        return self._private_key.exportKey(format='PEM').decode('ascii')
-    
-    def sign_data(self, data: str) -> str:
-        """Signer des données avec la clé privée"""
-        try:
-            h = SHA256.new(data.encode('utf-8'))
-            signature = self._signer.sign(h)
-            return binascii.hexlify(signature).decode('ascii')
-        except Exception as e:
-            logger.error(f"Erreur signature: {e}")
-            return ""
-    
-    def verify_signature(self, data: str, signature: str, public_key_pem: str = None) -> bool:
-        """Vérifier une signature avec la clé publique"""
-        try:
-            if public_key_pem:
-                public_key = RSA.importKey(public_key_pem.encode('ascii'))
-            else:
-                public_key = self._public_key
-            
-            verifier = PKCS1_v1_5.new(public_key)
-            h = SHA256.new(data.encode('utf-8'))
-            signature_bytes = binascii.unhexlify(signature.encode('ascii'))
-            return verifier.verify(h, signature_bytes)
-        except Exception as e:
-            logger.error(f"Erreur vérification signature: {e}")
-            return False
-    
-    def encrypt_data(self, data: str, recipient_public_key_pem: str = None) -> str:
-        """Chiffrer des données avec RSA"""
-        try:
-            if recipient_public_key_pem:
-                public_key = RSA.importKey(recipient_public_key_pem.encode('ascii'))
-            else:
-                public_key = self._public_key
-            
-            cipher = PKCS1_OAEP.new(public_key)
-            # RSA ne peut chiffrer que des données de taille limitée
-            # Pour de gros volumes, on utiliserait un chiffrement hybride
-            max_data_size = (self.key_size // 8) - 42  # PKCS1_OAEP padding
-            
-            if len(data.encode('utf-8')) > max_data_size:
-                raise ValueError(f"Données trop volumineuses pour RSA (max: {max_data_size} bytes)")
-            
-            encrypted_data = cipher.encrypt(data.encode('utf-8'))
-            return binascii.hexlify(encrypted_data).decode('ascii')
-        except Exception as e:
-            logger.error(f"Erreur chiffrement RSA: {e}")
-            return ""
-    
-    def decrypt_data(self, encrypted_data: str) -> str:
-        """Déchiffrer des données avec RSA"""
-        try:
-            cipher = PKCS1_OAEP.new(self._private_key)
-            encrypted_bytes = binascii.unhexlify(encrypted_data.encode('ascii'))
-            decrypted_data = cipher.decrypt(encrypted_bytes)
-            return decrypted_data.decode('utf-8')
-        except Exception as e:
-            logger.error(f"Erreur déchiffrement RSA: {e}")
-            return ""
-    
-    def save_to_file(self, filepath: str, password: str = None):
-        """Sauvegarder le portefeuille dans un fichier"""
-        try:
-            wallet_data = {
-                'user_id': self.user_id,
-                'identity': self.identity,
-                'public_key': self.public_key_pem,
-                'created_at': datetime.now().isoformat()
-            }
-            
-            if password:
-                # En production, utiliser un chiffrement plus robuste
-                private_key_encrypted = self._private_key.exportKey(
-                    format='PEM', 
-                    passphrase=password.encode('utf-8')
-                ).decode('ascii')
-                wallet_data['private_key_encrypted'] = private_key_encrypted
-            else:
-                wallet_data['private_key'] = self.private_key_pem
-            
-            with open(filepath, 'w') as f:
-                json.dump(wallet_data, f, indent=2)
-            
-            logger.info(f"Portefeuille sauvegardé: {filepath}")
-            
-        except Exception as e:
-            logger.error(f"Erreur sauvegarde portefeuille: {e}")
-    
-    @classmethod
-    def load_from_file(cls, filepath: str, password: str = None):
-        """Charger un portefeuille depuis un fichier"""
-        try:
-            with open(filepath, 'r') as f:
-                wallet_data = json.load(f)
-            
-            instance = cls.__new__(cls)
-            instance.user_id = wallet_data.get('user_id')
-            
-            if 'private_key_encrypted' in wallet_data and password:
-                instance._private_key = RSA.importKey(
-                    wallet_data['private_key_encrypted'].encode('ascii'),
-                    passphrase=password.encode('utf-8')
-                )
-            elif 'private_key' in wallet_data:
-                instance._private_key = RSA.importKey(
-                    wallet_data['private_key'].encode('ascii')
-                )
-            else:
-                raise ValueError("Clé privée non trouvée ou mot de passe requis")
-            
-            instance._public_key = instance._private_key.publickey()
-            instance._signer = PKCS1_v1_5.new(instance._private_key)
-            instance.key_size = instance._private_key.size_in_bits()
-            
-            logger.info(f"Portefeuille chargé: {filepath}")
-            return instance
-            
-        except Exception as e:
-            logger.error(f"Erreur chargement portefeuille: {e}")
-            return None
+    def has_abnormal_findings(self):
+        """Check if exam has any abnormal findings"""
+        return self.findings.filter(is_abnormal=True).exists()
 
 
-class MedicalTransaction:
-    """Transaction médicale avec signature RSA"""
+class RadiologicalFinding(models.Model):
+    """Model for individual radiological findings"""
     
-    def __init__(self, from_wallet: MedicalWallet, to_identity: str, 
-                 data: Dict, transaction_type: str = "medical_data"):
-        self.from_wallet = from_wallet
-        self.from_identity = from_wallet.identity if from_wallet else "ADMIN"
-        self.to_identity = to_identity
-        self.data = data
-        self.transaction_type = transaction_type
-        self.timestamp = datetime.now()
-        self.transaction_id = self._generate_id()
-        self.signature = ""
-        
-        # Signer automatiquement si portefeuille disponible
-        if from_wallet:
-            self.sign_transaction()
+    CERTAINTY_CHOICES = [
+        ('definite', 'Certain'),
+        ('probable', 'Probable'),
+        ('possible', 'Possible'),
+        ('unlikely', 'Peu probable'),
+    ]
     
-    def _generate_id(self) -> str:
-        """Générer un ID unique pour la transaction"""
-        tx_string = f"{self.from_identity}{self.to_identity}{self.transaction_type}{self.timestamp}"
-        return hashlib.sha256(tx_string.encode('utf-8')).hexdigest()[:16]
+    radio_exam = models.ForeignKey(RadiologicalExam, on_delete=models.CASCADE, related_name='findings')
     
-    def to_dict(self) -> collections.OrderedDict:
-        """Convertir la transaction en dictionnaire ordonné"""
-        return collections.OrderedDict({
-            'id': self.transaction_id,
-            'type': self.transaction_type,
-            'from': self.from_identity,
-            'to': self.to_identity,
-            'data': self.data,
-            'timestamp': self.timestamp.isoformat(),
-            'signature': self.signature
-        })
+    # Finding details
+    anatomical_region = models.CharField(max_length=100)
+    description = models.TextField(help_text="Description de la constatation")
+    location = models.CharField(max_length=200, blank=True, help_text="Localisation précise")
+    measurement = models.CharField(max_length=50, blank=True, help_text="Taille/dimensions")
     
-    def sign_transaction(self) -> str:
-        """Signer la transaction avec la clé privée"""
-        if not self.from_wallet:
-            logger.warning("Impossible de signer - portefeuille manquant")
-            return ""
-        
-        try:
-            # Créer une représentation canonique de la transaction
-            tx_dict = self.to_dict()
-            tx_dict['signature'] = ""  # Exclure la signature du hash
-            tx_string = json.dumps(tx_dict, sort_keys=True, ensure_ascii=False)
-            
-            self.signature = self.from_wallet.sign_data(tx_string)
-            return self.signature
-            
-        except Exception as e:
-            logger.error(f"Erreur signature transaction: {e}")
-            return ""
+    # Clinical significance
+    is_abnormal = models.BooleanField(default=False)
+    certainty = models.CharField(max_length=10, choices=CERTAINTY_CHOICES, default='definite')
+    clinical_significance = models.TextField(blank=True)
     
-    def verify_signature(self, public_key_pem: str = None) -> bool:
-        """Vérifier la signature de la transaction"""
-        if not self.signature:
-            return False
-        
-        try:
-            # Recréer la transaction sans signature pour vérification
-            tx_dict = self.to_dict()
-            original_signature = tx_dict['signature']
-            tx_dict['signature'] = ""
-            tx_string = json.dumps(tx_dict, sort_keys=True, ensure_ascii=False)
-            
-            if self.from_wallet:
-                return self.from_wallet.verify_signature(tx_string, original_signature, public_key_pem)
-            elif public_key_pem:
-                # Vérification avec clé publique externe
-                wallet_temp = MedicalWallet()
-                return wallet_temp.verify_signature(tx_string, original_signature, public_key_pem)
-            
-            return False
-            
-        except Exception as e:
-            logger.error(f"Erreur vérification signature: {e}")
-            return False
+    # Comparison with previous exams
+    comparison_available = models.BooleanField(default=False)
+    comparison_result = models.CharField(max_length=200, blank=True, help_text="Stable, progression, régression")
     
-    def display_transaction(self):
-        """Afficher les détails de la transaction"""
-        tx_dict = self.to_dict()
-        print("=== TRANSACTION MÉDICALE ===")
-        print(f"ID: {tx_dict['id']}")
-        print(f"Type: {tx_dict['type']}")
-        print(f"De: {tx_dict['from'][:20]}...")
-        print(f"Vers: {tx_dict['to'][:20]}...")
-        print(f"Données: {tx_dict['data']}")
-        print(f"Timestamp: {tx_dict['timestamp']}")
-        print(f"Signature: {'✓' if self.signature else '✗'}")
-        print("=" * 30)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['anatomical_region']
+        verbose_name = "Constatation radiologique"
+        verbose_name_plural = "Constatations radiologiques"
+    
+    def __str__(self):
+        return f"{self.anatomical_region}: {self.description[:50]}..."
 
 
-class IPFSManager:
-    """Gestionnaire pour les opérations IPFS avec gestion d'erreurs améliorée"""
+class RadiologicalImage(models.Model):
+    """Model for storing radiological images"""
     
-    def __init__(self, host='localhost', port=5001):
-        self.client = None
-        self.connected = False
-        
-        if not IPFS_AVAILABLE:
-            logger.error("IPFS client non disponible")
-            return
-            
-        try:
-            # Tenter plusieurs méthodes de connexion
-            connection_attempts = [
-                f'/dns/{host}/tcp/{port}/http',
-                f'/ip4/127.0.0.1/tcp/{port}/http',
-                f'http://{host}:{port}'
-            ]
-            
-            for attempt in connection_attempts:
-                try:
-                    self.client = ipfshttpclient.connect(attempt)
-                    # Test de connexion
-                    self.client.version()
-                    self.connected = True
-                    logger.info(f"IPFS connecté via: {attempt}")
-                    break
-                except Exception as e:
-                    logger.debug(f"Échec connexion IPFS {attempt}: {e}")
-                    continue
-                    
-            if not self.connected:
-                logger.error("Impossible de se connecter à IPFS")
-                
-        except Exception as e:
-            logger.error(f"Erreur initialisation IPFS: {e}")
+    IMAGE_TYPE_CHOICES = [
+        ('dicom', 'DICOM'),
+        ('jpeg', 'JPEG'),
+        ('png', 'PNG'),
+        ('tiff', 'TIFF'),
+    ]
     
-    def add_file(self, file_content: bytes, filename: str = None) -> Optional[str]:
-        """Ajouter un fichier à IPFS avec validation"""
-        if not self.connected or not self.client:
-            logger.error("IPFS non connecté")
-            return None
-            
-        try:
-            # Validation de la taille du fichier (limite à 50MB)
-            if len(file_content) > 50 * 1024 * 1024:
-                logger.error("Fichier trop volumineux (>50MB)")
-                return None
-            
-            result = self.client.add_bytes(file_content)
-            logger.info(f"Fichier ajouté à IPFS: {result}")
-            return result
-            
-        except Exception as e:
-            logger.error(f"Erreur ajout fichier IPFS: {e}")
-            return None
+    VIEW_CHOICES = [
+        ('ap', 'Antéro-postérieur'),
+        ('pa', 'Postéro-antérieur'),
+        ('lateral', 'Latéral'),
+        ('oblique', 'Oblique'),
+        ('axial', 'Axial'),
+        ('sagittal', 'Sagittal'),
+        ('coronal', 'Coronal'),
+        ('3d', '3D'),
+    ]
     
-    def get_file(self, hash_ipfs: str) -> Optional[bytes]:
-        """Récupérer un fichier depuis IPFS avec validation"""
-        if not self.connected or not self.client:
-            logger.error("IPFS non connecté")
-            return None
-            
-        # Validation du hash IPFS
-        if not self._is_valid_ipfs_hash(hash_ipfs):
-            logger.error(f"Hash IPFS invalide: {hash_ipfs}")
-            return None
-            
-        try:
-            content = self.client.cat(hash_ipfs)
-            return content
-        except Exception as e:
-            logger.error(f"Erreur récupération fichier IPFS {hash_ipfs}: {e}")
-            return None
+    radio_exam = models.ForeignKey(RadiologicalExam, on_delete=models.CASCADE, related_name='images')
     
-    def pin_file(self, hash_ipfs: str) -> bool:
-        """Épingler un fichier pour éviter sa suppression"""
-        if not self.connected or not self.client:
-            return False
-            
-        try:
-            self.client.pin.add(hash_ipfs)
-            logger.info(f"Fichier épinglé: {hash_ipfs}")
-            return True
-        except Exception as e:
-            logger.error(f"Erreur épinglage IPFS {hash_ipfs}: {e}")
-            return False
+    # Image details
+    image_file = models.FileField(upload_to='radiology/images/')
+    image_type = models.CharField(max_length=10, choices=IMAGE_TYPE_CHOICES)
+    view_type = models.CharField(max_length=15, choices=VIEW_CHOICES)
+    sequence_number = models.IntegerField(default=1)
     
-    def _is_valid_ipfs_hash(self, hash_ipfs: str) -> bool:
-        """Valider un hash IPFS"""
-        if not hash_ipfs or not isinstance(hash_ipfs, str):
-            return False
-        # Hash IPFS v0 commence par Qm et fait 46 caractères
-        # Hash IPFS v1 commence par b et est plus long
-        return (hash_ipfs.startswith('Qm') and len(hash_ipfs) == 46) or \
-               (hash_ipfs.startswith('b') and len(hash_ipfs) > 46)
+    # DICOM metadata
+    series_uid = models.CharField(max_length=100, blank=True)
+    instance_uid = models.CharField(max_length=100, blank=True)
+    
+    # Image properties
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
+    bit_depth = models.IntegerField(null=True, blank=True)
+    
+    # Annotations
+    has_annotations = models.BooleanField(default=False)
+    annotations_data = models.JSONField(null=True, blank=True)
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['sequence_number']
+        verbose_name = "Image radiologique"
+        verbose_name_plural = "Images radiologiques"
+    
+    def __str__(self):
+        return f"{self.radio_exam}- {self.get_view_type_display()} #{self.sequence_number}"
+    
+    @property
+    def file_size(self):
+        """Get file size in MB"""
+        if self.image_file:
+            return round(self.image_file.size / (1024 * 1024), 2)
+        return 0
 
 
-class MedicalBlock:
-    """Bloc de la blockchain médicale avec validation renforcée et minage optimisé"""
+class RadiologicalTemplate(models.Model):
+    """Model for radiological report templates"""
     
-    def __init__(self, index: int, transactions: List[MedicalTransaction], previous_hash: str, nonce: int = 0):
-        # Validation des paramètres
-        if not isinstance(index, int) or index < 0:
-            raise ValueError("L'index doit être un entier positif")
-        if not isinstance(transactions, list):
-            raise ValueError("Les transactions doivent être une liste")
-        if not isinstance(previous_hash, str):
-            raise ValueError("Le hash précédent doit être une chaîne")
-            
-        self.index = index
-        self.timestamp = datetime.now()
-        self.transactions = self._validate_transactions(transactions)
-        self.previous_hash = previous_hash
-        self.nonce = nonce
-        self.hash = self.calculate_hash()
+    TEMPLATE_TYPE_CHOICES = [
+        ('normal', 'Rapport normal'),
+        ('pathological', 'Rapport pathologique'),
+        ('comparison', 'Rapport de comparaison'),
+        ('screening', 'Rapport de dépistage'),
+    ]
     
-    def _validate_transactions(self, transactions: List[MedicalTransaction]) -> List[Dict]:
-        """Valider les transactions et convertir en dictionnaires"""
-        validated_transactions = []
-        for tx in transactions:
-            if isinstance(tx, MedicalTransaction):
-                # Vérifier la signature
-                if tx.verify_signature():
-                    validated_transactions.append(tx.to_dict())
-                else:
-                    logger.warning(f"Transaction avec signature invalide ignorée: {tx.transaction_id}")
-            elif isinstance(tx, dict) and self._is_valid_transaction_dict(tx):
-                validated_transactions.append(tx)
-            else:
-                logger.warning(f"Transaction invalide ignorée: {tx}")
-        return validated_transactions
+    name = models.CharField(max_length=100)
+    exam_type = models.CharField(max_length=20, choices=RadiologicalExam.EXAM_TYPE_CHOICES)
+    body_part = models.CharField(max_length=30, choices=RadiologicalExam.BODY_PART_CHOICES)
+    template_type = models.CharField(max_length=15, choices=TEMPLATE_TYPE_CHOICES)
     
-    def _is_valid_transaction_dict(self, transaction: Dict) -> bool:
-        """Vérifier la validité d'un dictionnaire de transaction"""
-        required_fields = ['type', 'timestamp', 'from', 'to']
-        return all(field in transaction for field in required_fields)
+    # Template content
+    description_template = models.TextField(blank=True)
+    impression_template = models.TextField(blank=True)
+    recommendations_template = models.TextField(blank=True)
     
-    def calculate_hash(self) -> str:
-        """Calculer le hash du bloc avec gestion d'erreurs"""
-        try:
-            block_data = {
-                'index': self.index,
-                'timestamp': self.timestamp.isoformat(),
-                'transactions': self.transactions,
-                'previous_hash': self.previous_hash,
-                'nonce': self.nonce
-            }
-            block_string = json.dumps(block_data, sort_keys=True, ensure_ascii=False)
-            return hashlib.sha256(block_string.encode('utf-8')).hexdigest()
-        except Exception as e:
-            logger.error(f"Erreur calcul hash bloc: {e}")
-            return hashlib.sha256(b'').hexdigest()
+    # Usage tracking
+    usage_count = models.IntegerField(default=0)
+    created_by = models.ForeignKey('Doctor', on_delete=models.CASCADE)
+    is_public = models.BooleanField(default=False)
     
-    def mine_block(self, difficulty: int = 4):
-        """Miner le bloc avec preuve de travail optimisée"""
-        if difficulty < 1 or difficulty > 8:
-            difficulty = 4  # Valeur par défaut sécurisée
-            
-        target = "0" * difficulty
-        start_time = time.time()
-        max_mining_time = 300  # 5 minutes maximum
-        
-        logger.info(f"Début minage bloc {self.index} (difficulté: {difficulty})")
-        
-        while not self.hash.startswith(target):
-            # Vérifier le timeout
-            current_time = time.time()
-            if current_time - start_time > max_mining_time:
-                logger.warning("Timeout du minage - difficulté réduite")
-                difficulty = max(1, difficulty - 1)
-                target = "0" * difficulty
-                start_time = current_time
-            
-            self.nonce += 1
-            self.hash = self.calculate_hash()
-            
-            # Affichage du progrès
-            if self.nonce % 10000 == 0:
-                elapsed = current_time - start_time
-                logger.debug(f"Minage... nonce: {self.nonce}, temps: {elapsed:.2f}s")
-            
-            # Éviter une boucle infinie
-            if self.nonce > 2000000:
-                logger.error("Minage abandonné - trop d'itérations")
-                break
-        
-        mining_time = time.time() - start_time
-        logger.info(f"Bloc {self.index} miné en {mining_time:.2f}s (nonce: {self.nonce}, hash: {self.hash})")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
-    def to_dict(self) -> Dict:
-        """Convertir le bloc en dictionnaire"""
-        return {
-            'index': self.index,
-            'timestamp': self.timestamp.isoformat(),
-            'transactions': self.transactions,
-            'previous_hash': self.previous_hash,
-            'nonce': self.nonce,
-            'hash': self.hash
-        }
+    class Meta:
+        ordering = ['exam_type', 'body_part', 'name']
+        verbose_name = "Modèle de rapport"
+        verbose_name_plural = "Modèles de rapports"
     
-    def save_to_json(self, filename: str = 'blocks.json'):
-        """Sauvegarder le bloc dans un fichier JSON"""
-        try:
-            data = []
-            
-            # Lire le fichier existant
-            if os.path.exists(filename):
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            
-            # Ajouter le nouveau bloc
-            data.append(self.to_dict())
-            
-            # Sauvegarder
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-            
-            logger.info(f"Bloc {self.index} sauvegardé dans {filename}")
-            
-        except Exception as e:
-            logger.error(f"Erreur sauvegarde bloc: {e}")
+    def __str__(self):
+        return f"{self.name} - {self.get_exam_type_display()} {self.get_body_part_display()}"
 
 
-class MedicalBlockchain:
-    """Blockchain pour les données médicales """
+class RadiologicalStatistics(models.Model):
+    """Model for tracking radiological statistics"""
     
-    def __init__(self, difficulty: int = 4):
-        self.difficulty = max(1, min(difficulty, 6))  # Limiter la difficulté
-        self.chain = []
-        self.pending_transactions = []
-        self.transaction_ids = set()  # Ensemble pour suivre les IDs des transactions
-        self.mining_reward = 100
-        self.ipfs_manager = IPFSManager()
-        self.user_wallets = {}  # Cache des portefeuilles utilisateurs
-        
-        # Charger ou créer la blockchain
-        self._load_or_create_chain()
+    doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE)
+    exam_type = models.CharField(max_length=20, choices=RadiologicalExam.EXAM_TYPE_CHOICES)
+    body_part = models.CharField(max_length=30, choices=RadiologicalExam.BODY_PART_CHOICES)
     
-    def add_transaction(self, transaction: Union[MedicalTransaction, Dict]) -> bool:
-        """Ajouter une transaction en attente avec validation RSA"""
-        try:
-            # Convertir dict en MedicalTransaction si nécessaire
-            if isinstance(transaction, dict):
-                tx = MedicalTransaction(
-                    from_wallet=None,
-                    to_identity=transaction.get('to', ''),
-                    data=transaction.get('data', {}),
-                    transaction_type=transaction.get('type', 'basic')
-                )
-                tx.from_identity = transaction.get('from', 'UNKNOWN')
-                transaction = tx
-            
-            # Vérifier que la transaction n'existe pas déjà
-            if transaction.transaction_id in self.transaction_ids:
-                logger.warning("Transaction déjà en attente")
-                return False
-            
-            # Vérifier la validité de la transaction
-            if not transaction.verify_signature():
-                logger.warning("Transaction avec signature invalide")
-                return False
-            
-            # Ajouter la transaction à la liste des transactions en attente
-            self.pending_transactions.append(transaction)
-            self.transaction_ids.add(transaction.transaction_id)  # Ajouter l'ID à l'ensemble
-            logger.info(f"Transaction RSA ajoutée: {transaction.transaction_type}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Erreur ajout transaction: {e}")
-            return False
+    # Monthly statistics
+    year = models.IntegerField()
+    month = models.IntegerField()
     
-    def mine_pending_transactions(self, mining_reward_address: str) -> bool:
-        """Miner les transactions en attente avec récompense RSA"""
-        if not self.pending_transactions:
-            logger.info("Aucune transaction en attente")
-            return False
-        
-        try:
-            # Ajouter la récompense de minage
-            reward_transaction = MedicalTransaction(
-                from_wallet=None,
-                to_identity=mining_reward_address,
-                data={'amount': self.mining_reward, 'type': 'mining_reward'},
-                transaction_type='mining_reward'
-            )
-            reward_transaction.from_identity = "BLOCKCHAIN_SYSTEM"
-            
-            transactions = self.pending_transactions + [reward_transaction]
-            
-            # Créer et miner le nouveau bloc
-            block = MedicalBlock(
-                len(self.chain),
-                transactions,
-                self.get_latest_block().hash
-            )
-            block.mine_block(self.difficulty)
-            
-            # Ajouter à la chaîne
-            self.chain.append(block)
-            self.pending_transactions = []
-            self.transaction_ids.clear()  # Réinitialiser les IDs des transactions
-            
-            # Sauvegarder
-            self._save_to_cache()
-            block.save_to_json()
-            
-            logger.info(f"Bloc {block.index} miné avec {len(transactions)} transactions")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Erreur minage: {e}")
-            return False
+    # Counts
+    total_exams = models.IntegerField(default=0)
+    normal_exams = models.IntegerField(default=0)
+    abnormal_exams = models.IntegerField(default=0)
+    urgent_exams = models.IntegerField(default=0)
+    
+    # Quality metrics
+    average_report_time = models.DurationField(null=True, blank=True)
+    quality_score = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['doctor', 'exam_type', 'body_part', 'year', 'month']
+        ordering = ['-year', '-month']
+        verbose_name = "Statistique radiologique"
+        verbose_name_plural = "Statistiques radiologiques"
+    
+    def __str__(self):
+        return f"{self.doctor} - {self.get_exam_type_display()} - {self.month}/{self.year}"
 
 
 
+class MedicalWallet(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    public_key = models.TextField()
+    private_key = encrypt(models.TextField())
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"Wallet for {self.user.username}"        
