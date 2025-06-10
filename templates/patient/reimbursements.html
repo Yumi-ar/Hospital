@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+
+{% block title %}Mes Remboursements{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Mes Remboursements</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'create_reimbursement' %}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-plus"></i> Nouvelle demande
+        </a>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ total_requested|floatformat:2 }} DA</h4>
+                        <p class="card-text">Total demandé</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-hand-holding-usd fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ total_approved|floatformat:2 }} DA</h4>
+                        <p class="card-text">Total approuvé</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ pending_count }}</h4>
+                        <p class="card-text">En attente</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4 class="card-title">{{ approved_count }}</h4>
+                        <p class="card-text">Approuvées</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-thumbs-up fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reimbursements Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-list"></i> Liste des demandes de remboursement
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if reimbursements %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date de soumission</th>
+                            <th>Consultation</th>
+                            <th>Montant demandé</th>
+                            <th>Montant approuvé</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reimbursement in reimbursements %}
+                        <tr>
+                            <td>{{ reimbursement.submitted_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <strong>Dr. {{ reimbursement.consultation.doctor.user.get_full_name }}</strong><br>
+                                <small class="text-muted">{{ reimbursement.consultation.date|date:"d/m/Y" }}</small>
+                            </td>
+                            <td>{{ reimbursement.amount_requested|floatformat:2 }} DA</td>
+                            <td>
+                                {% if reimbursement.amount_approved %}
+                                    {{ reimbursement.amount_approved|floatformat:2 }} DA
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if reimbursement.status == 'pending' %}
+                                    <span class="badge badge-warning">En attente</span>
+                                {% elif reimbursement.status == 'approved' %}
+                                    <span class="badge badge-success">Approuvé</span>
+                                {% elif reimbursement.status == 'rejected' %}
+                                    <span class="badge badge-danger">Rejeté</span>
+                                {% elif reimbursement.status == 'paid' %}
+                                    <span class="badge badge-info">Payé</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="{% url 'reimbursement_detail' reimbursement.id %}" 
+                                       class="btn btn-sm btn-outline-primary" title="Voir détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if reimbursement.status == 'pending' %}
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                onclick="cancelReimbursement('{{ reimbursement.id }}')"
+                                                title="Annuler">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if reimbursements.has_other_pages %}
+                <nav aria-label="Pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if reimbursements.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">&laquo; Première</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ reimbursements.previous_page_number }}">Précédente</a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ reimbursements.number }} sur {{ reimbursements.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if reimbursements.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ reimbursements.next_page_number }}">Suivante</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ reimbursements.paginator.num_pages }}">Dernière &raquo;</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Aucune demande de remboursement</h5>
+                <p class="text-muted">Vous n'avez pas encore fait de demande de remboursement.</p>
+                <a href="{% url 'create_reimbursement' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Créer une demande
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cancelModalLabel">Confirmer l'annulation</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                Êtes-vous sûr de vouloir annuler cette demande de remboursement ?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Non</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">Oui, annuler</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSRF Token -->
+{% csrf_token %}
+
+<script>
+let reimbursementToCancel = null;
+
+function cancelReimbursement(reimbursementId) {
+    reimbursementToCancel = reimbursementId;
+    $('#cancelModal').modal('show');
+}
+
+document.getElementById('confirmCancel').addEventListener('click', function() {
+    if (reimbursementToCancel) {
+        fetch(`/reimbursements/${reimbursementToCancel}/cancel/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur: ' + (data.message || 'Une erreur inconnue s\'est produite'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Une erreur s\'est produite lors de l\'annulation.');
+        });
+        
+        $('#cancelModal').modal('hide');
+        reimbursementToCancel = null;
+    }
+});
+</script>
+{% endblock %}

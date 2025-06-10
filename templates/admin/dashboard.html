@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --secondary: #f1f5f9;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --info: #06b6d4;
+        --dark: #1e293b;
+        --light: #f8fafc;
+        --border: #e2e8f0;
+        --text: #334155;
+        --text-light: #64748b;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        --medical-blue: #3b82f6;
+        --medical-green: #059669;
+    }
+
+    .dashboard-container {
+        padding: 2rem;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    .card-body {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .card-body i {
+        margin-bottom: 1.5rem;
+        color: var(--light);
+    }
+
+    .card-body h4 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--light);
+        margin-bottom: 0.5rem;
+    }
+
+    .card-body p {
+        font-size: 1rem;
+        color: var(--light);
+    }
+
+    .bg-primary {
+        background: linear-gradient(135deg, var(--primary), var(--medical-blue)) !important;
+    }
+
+    .bg-success {
+        background: linear-gradient(135deg, var(--success), var(--medical-green)) !important;
+    }
+
+    .bg-warning {
+        background: linear-gradient(135deg, var(--warning), #e67e22) !important;
+    }
+
+    .bg-info {
+        background: linear-gradient(135deg, var(--info), #17a2b8) !important;
+    }
+
+    .recent-activities {
+        margin-top: 3rem;
+    }
+
+    .recent-activities h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 1.5rem;
+    }
+
+    .table-responsive {
+        border: none;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .table {
+        width: 100%;
+        margin-bottom: 0;
+        color: var(--text);
+        border-collapse: collapse;
+    }
+
+    .table thead th {
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+
+    .text-muted {
+        color: var(--text-light) !important;
+        font-style: italic;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 1rem;
+        }
+
+        .dashboard-header h1 {
+            font-size: 1.75rem;
+        }
+
+        .dashboard-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .card-body h4 {
+            font-size: 1.5rem;
+        }
+
+        .recent-activities h3 {
+            font-size: 1.25rem;
+        }
+
+        .table thead th,
+        .table tbody td {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1>Admin Dashboard</h1>
+    </div>
+
+    <div class="dashboard-cards">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x mb-3"></i>
+                <h4>{{ total_patients }}</h4>
+                <p>Patients</p>
+            </div>
+        </div>
+        
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <i class="fas fa-user-md fa-3x mb-3"></i>
+                <h4>{{ total_doctors }}</h4>
+                <p>Doctors</p>
+            </div>
+        </div>
+        
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <i class="fas fa-clock fa-3x mb-3"></i>
+                <h4>{{ pending_verifications }}</h4>
+                <p>Pending Verifications</p>
+            </div>
+        </div>
+        
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <i class="fas fa-cog fa-3x mb-3"></i>
+                <h4>System</h4>
+                <p>Active</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="recent-activities">
+        <h3>Recent Activities</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if recent_activities %}
+                        {% for activity in recent_activities %}
+                        <tr>
+                            <td>{{ activity.user.username }}</td>
+                            <td>{{ activity.action }}</td>
+                            <td>{{ activity.description }}</td>
+                            <td>{{ activity.timestamp|date:"m/d/Y H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="4" class="text-muted">No recent activity</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

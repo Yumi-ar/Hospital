@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Tableau de bord Médecin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Tableau de bord Médecin</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Consultations Récentes</h5>
+                <p class="card-text">{{ recent_consultations.count }} consultation(s)</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-clock fa-3x text-warning mb-3"></i>
+                <h5 class="card-title">Demandes en Attente</h5>
+                <p class="card-text">{{ pending_requests }} demande(s)</p>
+                <a href="{% url 'request_patient_access' %}" class="btn btn-primary">
+                    Nouvelle Demande
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-prescription fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Actions Rapides</h5>
+                <a href="{% url 'request_patient_access' %}" class="btn btn-outline-primary btn-sm">
+                    Demander Accès Patient
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if recent_consultations %}
+<div class="mt-4">
+    <h3>Consultations Récentes</h3>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Date</th>
+                            <th>Diagnostic</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for consultation in recent_consultations %}
+                        <tr>
+                            <td>{{ consultation.patient.user.get_full_name }}</td>
+                            <td>{{ consultation.date|date:"d/m/Y" }}</td>
+                            <td>{{ consultation.diagnosis|truncatechars:50 }}</td>
+                            <td>
+                                <a href="{% url 'patient_records' consultation.patient.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> Voir Dossier
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
