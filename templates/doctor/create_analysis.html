@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Prescrire une Analyse{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card et formulaire */
+    .card {
+        border-radius: 15px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 2rem;
+    }
+
+    .card-header {
+        background-color: #28a745 !important; /* vert Bootstrap 5 */
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        color: #fff !important;
+        font-weight: 600;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    label.form-label strong {
+        font-weight: 700;
+        color: #343a40;
+    }
+
+    /* Champs du formulaire */
+    .form-control, .form-select {
+        border: 2px solid #ced4da;
+        border-radius: 10px;
+        padding: 0.65rem 1rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        background-color: #ffffffcc; /* légèrement transparent blanc */
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+        background-color: #fff;
+        outline: none;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* Messages d'erreur */
+    .invalid-feedback.d-block, .text-danger {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #dc3545;
+    }
+
+    /* Boutons */
+    .btn-success {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        border: none;
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: background 0.3s ease;
+    }
+    .btn-success:hover {
+        background: linear-gradient(135deg, #20c997, #28a745);
+        color: white;
+    }
+
+    .btn-outline-secondary {
+        padding: 0.75rem 1.8rem;
+        font-weight: 600;
+        border-radius: 50px;
+        border: 2px solid #6c757d;
+        color: #6c757d;
+        transition: all 0.3s ease;
+    }
+    .btn-outline-secondary:hover {
+        background-color: #6c757d;
+        color: white;
+        border-color: #6c757d;
+    }
+
+    /* boîtes d’alerte */
+    .alert {
+        border-radius: 10px;
+        font-size: 0.9rem;
+    }
+
+    /* Espace cohérent */
+    .mb-3, .mb-4, .mb-2 {
+        margin-bottom: 1rem !important;
+    }
+    .gap-2 > * + * {
+        margin-left: 0.5rem;
+    }
+
+    /* Mise en page responsive */
+    @media (max-width: 768px) {
+        .card {
+            margin: 1rem 0;
+        }
+        .card-header {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-flask"></i>
+                    Prescrire une Analyse Médicale
+                </div>
+                <div class="card-body">
+                    <!-- Informations patient -->
+                    <div class="mb-4">
+                        <div class="alert alert-info p-3">
+                            <h5><i class="fas fa-user me-2"></i>Patient: {{ patient.user.get_full_name }}</h5>
+                            <p class="mb-0">
+                                <strong>Date de naissance:</strong> {{ patient.date_of_birth|date:"d/m/Y" }} |
+                                <strong>Âge:</strong> {{ patient.age }} ans |
+                                <strong>Sexe:</strong> {{ patient.get_gender_display }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Formulaire -->
+                    <form method="post" class="needs-validation" novalidate id="analysisForm">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.analysis_type.id_for_label }}" class="form-label"><strong>Type d'analyse *</strong></label>
+                                {{ form.analysis_type|add_class:"form-select" }}
+                                {% if form.analysis_type.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.analysis_type.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.consultation.id_for_label }}" class="form-label"><strong>Consultation associée</strong></label>
+                                {{ form.consultation|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label"><strong>Titre de l'analyse *</strong></label>
+                            {{ form.title|add_class:"form-control" }}
+                            {% if form.title.errors %}
+                                <div class="invalid-feedback d-block">{{ form.title.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label"><strong>Description</strong></label>
+                            {{ form.description|add_class:"form-control" }}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.indication.id_for_label }}" class="form-label"><strong>Indication médicale *</strong></label>
+                            {{ form.indication|add_class:"form-control" }}
+                            {% if form.indication.errors %}
+                                <div class="invalid-feedback d-block">{{ form.indication.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.expected_date.id_for_label }}" class="form-label"><strong>Date prévue</strong></label>
+                                {{ form.expected_date|add_class:"form-control" }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.laboratory.id_for_label }}" class="form-label"><strong>Laboratoire</strong></label>
+                                {{ form.laboratory|add_class:"form-select" }}
+                            </div>
+                        </div>
+
+                        {% if form.special_instructions %}
+                        <div class="mb-3">
+                            <label for="{{ form.special_instructions.id_for_label }}" class="form-label"><strong>Instructions spéciales</strong></label>
+                            {{ form.special_instructions|add_class:"form-control" }}
+                        </div>
+                        {% endif %}
+
+                        {% if form.urgency %}
+                        <div class="mb-3">
+                            <label for="{{ form.urgency.id_for_label }}" class="form-label"><strong>Degré d'urgence</strong></label>
+                            {{ form.urgency|add_class:"form-select" }}
+                        </div>
+                        {% endif %}
+
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h6 class="mb-0">Instructions de préparation</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning m-0 p-2">
+                                    <small><i class="fas fa-exclamation-triangle me-2"></i> Certaines analyses nécessitent un jeûne ou une préparation spécifique. Veuillez informer le patient selon le type d'analyse.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'patient_records' patient.id %}" class="btn btn-outline-secondary btn-modern">
+                                <i class="fas fa-arrow-left me-2"></i>Retour
+                            </a>
+                            
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-success" name="action" value="save_only">
+                                    <i class="fas fa-save me-2"></i>Prescrire seulement
+                                </button>
+                                <button type="submit" class="btn btn-outline-secondary" name="generate_pdf" value="1">
+                                    <i class="fas fa-file-pdf me-2"></i>Prescrire et Générer PDF
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Validation du formulaire Bootstrap
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            Array.prototype.forEach.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    // Auto-complétion du titre en fonction du type d'analyse
+    document.addEventListener('DOMContentLoaded', function() {
+        const analysisTypeEl = document.querySelector('#id_analysis_type');
+        const titleEl = document.querySelector('#id_title');
+        if (analysisTypeEl && titleEl) {
+            analysisTypeEl.addEventListener('change', function() {
+                if (!titleEl.value) {
+                    titleEl.value = this.options[this.selectedIndex].text;
+                }
+            });
+        }
+    });
+</script>

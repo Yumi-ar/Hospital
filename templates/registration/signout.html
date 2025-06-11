@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Déconnexion - Système de Gestion Hospitalière{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card shadow-lg border-0" style="animation: fadeInUp 0.6s ease-out;">
+                <div class="card-header text-center py-4">
+                    <i class="fas fa-sign-out-alt fa-3x mb-3" style="animation: pulse 2s infinite;"></i>
+                    <h3 class="mb-0">Confirmer la Déconnexion</h3>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <p class="lead text-muted">
+                            Êtes-vous sûr de vouloir vous déconnecter de votre session ?
+                        </p>
+                        <p class="text-muted">
+                            Toutes vos données non sauvegardées seront perdues.
+                        </p>
+                    </div>
+                    
+                    <!-- Security Note -->
+                    <div class="alert alert-info border-0" style="background-color: #e8f4fd; border-left: 4px solid #3498db !important;">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-shield-alt text-primary me-3"></i>
+                            <div>
+                                <strong>Note de sécurité :</strong>
+                                <p class="mb-0 mt-1">Pour votre protection, nous recommandons de toujours vous déconnecter lorsque vous utilisez un ordinateur partagé ou public.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Info -->
+                    {% if user.is_authenticated %}
+                    <div class="bg-light rounded p-3 mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 50%;">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <h6 class="mb-1">{{ user.get_full_name|default:user.username }}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-user-tag me-1"></i>{{ user.user_type|title|default:"Utilisateur" }}
+                                </small>
+                            </div>
+                            <div class="col-auto">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Session: <span id="sessionTime">--:--</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <form method="post" action="{% url 'logout' %}" class="me-md-2">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-lg px-4" id="confirmLogout">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Confirmer la Déconnexion
+                            </button>
+                        </form>
+                        
+                        <a href="{{ request.META.HTTP_REFERER|default:'/' }}" class="btn btn-secondary btn-lg px-4">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Annuler
+                        </a>
+                    </div>
+                    
+                    <!-- Footer Info -->
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <small class="text-muted">
+                            <i class="fas fa-hospital me-1"></i>
+                            Merci d'avoir utilisé notre système de gestion hospitalière
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.card {
+    border-radius: 15px;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+}
+
+.btn-secondary {
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+}
+
+.avatar-circle {
+    font-size: 1.2rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calculate and display session time (you can replace this with actual session data)
+    function updateSessionTime() {
+        const now = new Date();
+        // This is a simulation - replace with actual session start time from your backend
+        const sessionStart = new Date(now.getTime() - Math.random() * 3600000); // Random time up to 1 hour ago
+        const diff = now - sessionStart;
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        
+        const sessionTimeElement = document.getElementById('sessionTime');
+        if (sessionTimeElement) {
+            sessionTimeElement.textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+    }
+    
+    updateSessionTime();
+    
+    // Add confirmation dialog for extra security
+    const logoutButton = document.getElementById('confirmLogout');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', function(e) {
+            const confirmed = confirm('Êtes-vous vraiment sûr de vouloir vous déconnecter ?');
+            if (!confirmed) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Add subtle animations
+    const card = document.querySelector('.card');
+    if (card) {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-8px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(-5px)';
+        });
+    }
+});
+</script>
+{% endblock %}

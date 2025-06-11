@@ -1,0 +1,534 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultation Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Consultation Management</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newConsultationModal">
+                <i class="fas fa-plus"></i> New Consultation
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-day fa-2x text-primary mb-2"></i>
+                <h6 class="card-title">Today</h6>
+                <h4 class="text-primary">{{ today_consultations }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-week fa-2x text-success mb-2"></i>
+                <h6 class="card-title">This Week</h6>
+                <h4 class="text-success">{{ week_consultations }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-calendar-alt fa-2x text-warning mb-2"></i>
+                <h6 class="card-title">This Month</h6>
+                <h4 class="text-warning">{{ month_consultations }}</h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-euro-sign fa-2x text-info mb-2"></i>
+                <h6 class="card-title">Monthly Revenue</h6>
+                <h4 class="text-info">{{ month_revenue }}DA</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="patient_search" class="form-label">Search Patient</label>
+                <input type="text" class="form-control" id="patient_search" name="patient" 
+                       value="{{ request.GET.patient }}" placeholder="Patient's name...">
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">Date From</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" 
+                       value="{{ request.GET.date_from }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">Date To</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" 
+                       value="{{ request.GET.date_to }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                    <a href="{% url 'consultations' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- List of Consultations -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">List of Consultations</h5>
+    </div>
+    <div class="card-body">
+        {% if consultations %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Symptoms</th>
+                        <th>Diagnosis</th>
+                        <th>Cost</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for consultation in consultations %}
+                    <tr>
+                        <td>
+                            <strong>{{ consultation.date|date:"d/m/Y" }}</strong><br>
+                            <small class="text-muted">{{ consultation.date|time:"H:i" }}</small>
+                        </td>
+                        <td>
+                            <strong>{{ consultation.patient.user.get_full_name }}</strong><br>
+                            <small class="text-muted">{{ consultation.patient.user.email }}</small>
+                        </td>
+                        <td>
+                            <span data-bs-toggle="tooltip" title="{{ consultation.symptoms }}">
+                                {{ consultation.symptoms|truncatechars:40 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span data-bs-toggle="tooltip" title="{{ consultation.diagnosis }}">
+                                {{ consultation.diagnosis|truncatechars:40 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-success">{{ consultation.cost }}DA</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary" 
+                                        onclick="viewConsultation('{{ consultation.id }}')"
+                                        data-bs-toggle="modal" data-bs-target="#viewConsultationModal">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-warning"
+                                        onclick="editConsultation('{{ consultation.id }}')"
+                                        data-bs-toggle="modal" data-bs-target="#editConsultationModal">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger"
+                                        onclick="deleteConsultation('{{ consultation.id }}', '{{ consultation.patient.user.get_full_name }}')"
+                                        data-bs-toggle="modal" data-bs-target="#deleteConsultationModal">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Consultation Navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if request.GET.patient %}&patient={{ request.GET.patient }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">&laquo; First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.patient %}&patient={{ request.GET.patient }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Previous</a>
+                    </li>
+                {% endif %}
+
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.patient %}&patient={{ request.GET.patient }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.patient %}&patient={{ request.GET.patient }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}">Last &raquo;</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
+            <h5 class="text-muted">No consultations found</h5>
+            <p class="text-muted">Start by creating your first consultation.</p>
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newConsultationModal">
+                <i class="fas fa-plus"></i> New Consultation
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- New Consultation Modal -->
+<div class="modal fade" id="newConsultationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Consultation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'create_consultation' %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="patient" class="form-label">Patient *</label>
+                                <select class="form-select" id="patient" name="patient" required>
+                                    <option value="">Select a patient...</option>
+                                    {% for patient in patients %}
+                                    <option value="{{ patient.id }}">{{ patient.user.get_full_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date" class="form-label">Date and Time *</label>
+                                <input type="datetime-local" class="form-control" id="date" name="date" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="symptoms" class="form-label">Symptoms *</label>
+                        <textarea class="form-control" id="symptoms" name="symptoms" rows="3" required
+                                  placeholder="Describe the patient's symptoms..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="diagnosis" class="form-label">Diagnosis *</label>
+                        <textarea class="form-control" id="diagnosis" name="diagnosis" rows="3" required
+                                  placeholder="Establish the diagnosis..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="treatment" class="form-label">Treatment *</label>
+                        <textarea class="form-control" id="treatment" name="treatment" rows="3" required
+                                  placeholder="Prescribe the treatment..."></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="cost" class="form-label">Cost (DA) *</label>
+                                <input type="number" class="form-control" id="cost" name="cost" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="notes" class="form-label">Additional Notes</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="2"
+                                          placeholder="Additional notes (optional)..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- View Consultation Modal -->
+<div class="modal fade" id="viewConsultationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Consultation Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="consultationDetails">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Consultation Modal -->
+<div class="modal fade" id="editConsultationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Consultation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="editConsultationForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_patient" class="form-label">Patient</label>
+                                <input type="text" class="form-control" id="edit_patient_name" readonly>
+                                <input type="hidden" id="edit_patient" name="patient">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_date" class="form-label">Date and Time *</label>
+                                <input type="datetime-local" class="form-control" id="edit_date" name="date" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_symptoms" class="form-label">Symptoms *</label>
+                        <textarea class="form-control" id="edit_symptoms" name="symptoms" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_diagnosis" class="form-label">Diagnosis *</label>
+                        <textarea class="form-control" id="edit_diagnosis" name="diagnosis" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_treatment" class="form-label">Treatment *</label>
+                        <textarea class="form-control" id="edit_treatment" name="treatment" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_cost" class="form-label">Cost (DA) *</label>
+                                <input type="number" class="form-control" id="edit_cost" name="cost" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_notes" class="form-label">Additional Notes</label>
+                                <textarea class="form-control" id="edit_notes" name="notes" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save"></i> Edit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Consultation Modal -->
+<div class="modal fade" id="deleteConsultationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Delete Consultation
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the consultation for <strong id="deletePatientName"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i> This action is irreversible.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" id="deleteConsultationForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales
+let currentEditId = null;
+
+// Fonction pour voir les détails d'une consultation
+function viewConsultation(consultationId) {
+    // Use Django URL reverse - make sure you have the correct URL name
+    const url = `{% url 'consultation_details' 0 %}`.replace('0', consultationId);
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                alert('Erreur: ' + (data.error || 'Erreur inconnue'));
+                return;
+            }
+            
+            document.getElementById('consultationDetails').innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-user"></i> Patient</h6>
+                        <p><strong>${data.patient_name}</strong><br>
+                        <small class="text-muted">${data.patient_email}</small></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-calendar"></i> Date</h6>
+                        <p>${data.date}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <h6><i class="fas fa-thermometer-half"></i> Symptômes</h6>
+                    <p>${data.symptoms}</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="fas fa-stethoscope"></i> Diagnostic</h6>
+                    <p>${data.diagnosis}</p>
+                </div>
+                <div class="mb-3">
+                    <h6><i class="fas fa-pills"></i> Traitement</h6>
+                    <p>${data.treatment}</p>
+                </div>
+                ${data.notes ? `
+                <div class="mb-3">
+                    <h6><i class="fas fa-sticky-note"></i> Notes</h6>
+                    <p>${data.notes}</p>
+                </div>
+                ` : ''}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-euro-sign"></i> Coût</h6>
+                        <p><span class="badge bg-success fs-6">${data.cost}DA</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-clock"></i> Créé le</h6>
+                        <p><small class="text-muted">${data.created_at}</small></p>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors du chargement des détails: ' + error.message);
+        });
+    }
+
+// Fonction pour modifier une consultation
+function editConsultation(consultationId) {
+    currentEditId = consultationId;
+    
+    fetch(`/consultations/${consultationId}/edit/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Erreur: ' + data.error);
+            return;
+        }
+        
+        // Remplir le formulaire de modification
+        document.getElementById('edit_patient_name').value = data.patient_name;
+        document.getElementById('edit_patient').value = data.patient_id;
+        document.getElementById('edit_date').value = data.date;
+        document.getElementById('edit_symptoms').value = data.symptoms;
+        document.getElementById('edit_diagnosis').value = data.diagnosis;
+        document.getElementById('edit_treatment').value = data.treatment;
+        document.getElementById('edit_notes').value = data.notes || '';
+        document.getElementById('edit_cost').value = data.cost;
+        
+        // Mettre à jour l'action du formulaire
+        document.getElementById('editConsultationForm').action = `/consultations/${consultationId}/edit/`;
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        alert('Erreur lors du chargement des données');
+    });
+}
+
+// Fonction pour supprimer une consultation
+function deleteConsultation(consultationId, patientName) {
+    document.getElementById('deletePatientName').textContent = patientName;
+    document.getElementById('deleteConsultationForm').action = `/consultations/${consultationId}/delete/`;
+}
+
+// Initialisation au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser les tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Définir la date par défaut à maintenant pour nouvelle consultation
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('date').value = now.toISOString().slice(0, 16);
+    
+    // Réinitialiser les modals lors de leur fermeture
+    document.getElementById('newConsultationModal').addEventListener('hidden.bs.modal', function () {
+        this.querySelector('form').reset();
+        // Remettre la date à maintenant
+        document.getElementById('date').value = now.toISOString().slice(0, 16);
+    });
+    
+    document.getElementById('editConsultationModal').addEventListener('hidden.bs.modal', function () {
+        currentEditId = null;
+    });
+});
+</script>
+
+{% endblock %}
