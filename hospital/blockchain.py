@@ -1,14 +1,19 @@
-#blockchain.py fonctionne 
-import base64
 import hashlib
-import json
 import time
-from datetime import datetime
 import datetime
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization, hashes
-from django.contrib.auth import get_user_model
+import json
 import logging
+from typing import Dict, List, Optional
+import  ecdsa 
+
+import base58
+from django.contrib.auth import get_user_model
+from .models import UserWallet
+
+import hashlib
+import base64
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -24,47 +29,35 @@ class Wallet:
     @staticmethod
     def generate_wallet():
         wallet = Wallet()
-        private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        public_key = private_key.public_key()
-
-        # Export keys
-        wallet.private_key = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        ).decode()
-
-        wallet.public_key = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        ).decode()
-
-       
-        public_key_hash = hashlib.sha256(wallet.public_key.encode()).digest()
-        wallet.identity = base64.b58encode(public_key_hash).decode()
-
+        private_key = ecdsa.SigningKey.generate(curve=ecdsa.SECP256k1)
+        public_key = private_key.get_verifying_key()
+        wallet.private_key = private_key.to_string().hex()
+        wallet.public_key = public_key.to_string().hex()
+        public_key_bytes = bytes.fromhex(wallet.public_key)
+        public_key_hash = hashlib.sha256(public_key_bytes).digest()
+        wallet.identity = base58.b58encode(public_key_hash).decode('utf-8')
+        logger.debug(f"Generated wallet: identity={wallet.identity}, private_key_len={len(bytes.fromhex(wallet.private_key))}")
         return wallet
 
-    def sign_data(self, data: str) -> str:
-        private_key = serialization.load_pem_private_key(
-            self.private_key.encode(), password=None
-        )
-        signature = private_key.sign(
-            data.encode(),
-            padding.PSS(mgf=padding.MGF1(hashes.SHA256()), salt_length=padding.PSS.MAX_LENGTH),
-            hashes.SHA256()
-        )
+    @classmethod
+    def load_from_db(cls, user):
+        from hospital.models import UserWallet
+        try:
+            wallet_obj = UserWallet.objects.get(user=user)
+            wallet = cls(user_id=str(user.id))
+            wallet.identity = wallet_obj.identity
+            wallet.private_key = wallet_obj.private_key
+            wallet.public_key = wallet_obj.public_key
+            return wallet
+        except UserWallet.DoesNotExist:
+            return None
+    def sign_data(self, data):
+        private_key_bytes = bytes.fromhex(self.private_key)
+        private_key = ecdsa.SigningKey.from_string(private_key_bytes, curve=ecdsa.SECP256k1)
+        signature = private_key.sign(data.encode())
         return base64.b64encode(signature).decode()
 
-    def verify_integrity(self) -> bool:
-        """Vérifie que les clés du portefeuille correspondent en signant et validant un message."""
-        try:
-            test_message = b"integrity_check"
-            signature = self.sign_data(test_message)
-            return self.verify_signature(test_message, signature)
-        except Exception as e:
-            print(f"[!] Erreur d'intégrité du wallet: {e}")
-            return False
+
 
 class BlockchainTransaction:
     def __init__(self, sender, recipient, data):
@@ -75,6 +68,11 @@ class BlockchainTransaction:
         self.transaction_id = self.calculate_transaction_id()
         self.signature = None
         self.wallet_private_key = sender.private_key if sender else None
+
+    def _generate_id(self):
+        """Generate a unique transaction ID"""
+        tx_string = f"{self.sender.identity}{self.recipient}{json.dumps(self.data, sort_keys=True)}{self.timestamp.isoformat()}"
+        return hashlib.sha256(tx_string.encode('utf-8')).hexdigest()[:16]
 
     def calculate_transaction_id(self):
         transaction_string = (
@@ -87,42 +85,39 @@ class BlockchainTransaction:
 
     def sign_transaction(self):
         try:
-            private_key = serialization.load_pem_private_key(
-                self.wallet_private_key.encode(),
-                password=None,
-                backend=default_backend()
+            private_key_bytes = bytes.fromhex(self.wallet_private_key)
+            if len(private_key_bytes) != 32:
+                logger.error(f"Invalid private key length: {len(private_key_bytes)} bytes")
+                return False
+            private_key = ecdsa.SigningKey.from_string(
+                private_key_bytes, curve=ecdsa.SECP256k1
             )
-            tx_string = self.calculate_transaction_id()
-            signature = private_key.sign(
-                tx_string.encode(),
-                padding.PKCS1v15(),
-                hashes.SHA256()
-            )
-            self.signature = base64.b64encode(signature).decode()
+            transaction_string = self.calculate_transaction_id()
+            self.signature = private_key.sign(transaction_string.encode()).hex()
+            logger.info(f"Transaction signed: {self.signature}")
             return True
+        except ValueError as e:
+            logger.error(f"Invalid private key format: {str(e)}")
+            return False
         except Exception as e:
-            logger.error(f"Error signing transaction: {str(e)}")
+            logger.error(f"Unexpected signature error: {str(e)}")
             return False
 
     def verify_signature(self):
+        """Verify the transaction signature using ECDSA"""
         if not self.signature:
+            logger.error("No signature found for transaction")
             return False
         try:
-            public_key = serialization.load_pem_public_key(
-                transaction.sender.public_key.encode(),
-                backend=default_backend()
-            )
-            tx_string = self.calculate_transaction_id()
-           
-            public_key.verify(
-                base64.b64decode(transaction.signature),
-                transaction.calculate_transaction_id().encode(),
-                padding.PKCS1v15(),
-                hashes.SHA256()
-            )
-            return True
+            tx_dict = self.to_dict()
+            original_signature = tx_dict['signature']
+            tx_dict['signature'] = None
+            tx_string = json.dumps(tx_dict, sort_keys=True).encode('utf-8')
+            public_key = ecdsa.VerifyingKey.from_string(bytes.fromhex(self.sender.public_key))
+            signature_bytes = bytes.fromhex(original_signature)
+            return public_key.verify(signature_bytes, tx_string)
         except Exception as e:
-            logger.error(f"Signature verification failed: {str(e)}")
+            logger.error(f"Error verifying signature: {e}")
             return False
 
     def to_dict(self):
@@ -166,7 +161,7 @@ class MedicalBlockchain:
     def create_genesis_block(self):
         """Create the genesis block"""
         genesis_block = Block(0, [], "0")
-        genesis_block.hash = genesis_block.compute_hash()  # Ensure genesis block has valid hash
+        genesis_block.hash = genesis_block.compute_hash()  
         self.chain.append(genesis_block)
         self.save_blockchain()
 
@@ -176,14 +171,14 @@ class MedicalBlockchain:
                 chain_data = json.load(file)
                 self.chain = []
                 for block_data in chain_data:
-                    # Créez des objets BlockchainTransaction à partir des données de transaction
+                  
                     transactions = []
                     for tx_data in block_data.get('transactions', []):
-                        # Vérifiez si tx_data['sender'] est None avant de créer un Wallet
+                      
                         sender = Wallet()
                         sender.identity = tx_data['sender']
                         tx = BlockchainTransaction(
-                            sender=sender if tx_data['sender'] else None,  # Créez un objet Wallet temporaire
+                            sender=sender if tx_data['sender'] else None, 
                             recipient=tx_data['recipient'],
                             data=tx_data['data']
                         )
@@ -192,7 +187,7 @@ class MedicalBlockchain:
                         tx.signature = tx_data['signature']
                         transactions.append(tx)
 
-                    # Créez un objet Block à partir des données du bloc
+                    
                     block = Block(
                         index=block_data['index'],
                         transactions=transactions,
@@ -229,7 +224,7 @@ class MedicalBlockchain:
             else:
                 logger.warning("Skipping signature verification for transaction with no sender or public key.")
 
-            self.pending_transactions.append(transaction)  # Ajoutez l'objet transaction directement
+            self.pending_transactions.append(transaction)
             logger.info(f"Transaction added: {transaction.transaction_id}")
             return True
         except Exception as e:
@@ -240,11 +235,11 @@ class MedicalBlockchain:
         if not self.pending_transactions:
             return None
 
-        # Créez un nouvel objet Block
+       
         new_block = Block(
             index=len(self.chain),
             transactions=self.pending_transactions,
-            previous_hash=self.chain[-1].hash if self.chain else "0"  # Utilisez l'attribut hash de l'objet Block précédent
+            previous_hash=self.chain[-1].hash if self.chain else "0"  
         )
         new_block.hash = new_block.compute_hash()
 
@@ -268,11 +263,11 @@ class MedicalBlockchain:
         return True
 
     def save_blockchain(self):
-        # Convertissez les objets Block en dictionnaires avant de les sérialiser
+        
         chain_data = [
             {
                 'index': block.index,
-                'timestamp': block.timestamp.timestamp(),  # Convertissez datetime en timestamp
+                'timestamp': block.timestamp.timestamp(), 
                 'transactions': [tx.to_dict() for tx in block.transactions],
                 'previous_hash': block.previous_hash,
                 'hash': block.hash,
@@ -284,18 +279,17 @@ class MedicalBlockchain:
             json.dump(chain_data, file, indent=4)
 
     def load_chain(self, filename="blocks.json"):
-        """Charge la blockchain depuis un fichier JSON"""
+        """Load the blockchain from a JSON file"""
         try:
             with open(filename, 'r') as f:
                 chain_data = json.load(f)
                 self.chain = []
                 self.transaction_ids = set()
-
                 for block_data in chain_data:
                     transactions = []
                     for tx_data in block_data["transactions"]:
                         sender = Wallet()
-                        sender.identity = tx_data["sender"]  # Identité temporaire
+                        sender.identity = tx_data["sender"]  
                         tx = BlockchainTransaction(
                             sender=sender,
                             recipient=tx_data["recipient"],
@@ -306,24 +300,19 @@ class MedicalBlockchain:
                         tx.signature = tx_data.get("signature")
                         transactions.append(tx)
                         self.transaction_ids.add(tx.transaction_id)
-
                     block = Block(
                         block_data["index"],
                         transactions,
                         block_data["previous_hash"]
                     )
-                    block.timestamp = datetime.datetime.fromtimestamp(block_data["timestamp"])  # ✅ Correction ici
+                    block.timestamp = datetime.datetime.fromisoformat(block_data["timestamp"])
                     block.nonce = block_data["nonce"]
                     block.hash = block_data["hash"]
-
                     self.chain.append(block)
-
-            logger.info(f"✅ Blockchain chargée avec succès ({len(self.chain)} blocs).")
-
+            logger.info(f"Blockchain loaded with {len(self.chain)} blocks")
         except FileNotFoundError:
-            logger.warning("Fichier blockchain non trouvé, création d'un bloc genesis.")
+            logger.info("Blockchain file not found, creating genesis block")
             self.create_genesis_block()
-
         except Exception as e:
-            logger.error(f"Erreur lors du chargement de la blockchain : {e}")
+            logger.error(f"Error loading blockchain: {e}")
             self.create_genesis_block()
