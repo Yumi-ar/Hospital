@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv  # ✅ Importer load_dotenv
+from dotenv import load_dotenv 
 
 # Charger les variables depuis le fichier .env
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,11 +21,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv()
 
-# Clé de chiffrement pour django-encrypted-model-fields
-FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCFIELD_ENCRYPTION_KEY")
-
-if not FIELD_ENCRYPTION_KEY:
-    raise Exception("FIELD_ENCRYPTION_KEY n'est pas défini dans le fichier .env")
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
