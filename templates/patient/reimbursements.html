@@ -1,0 +1,514 @@
+{% extends 'base.html' %}
+
+{% block title %}Mes Remboursements{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .dashboard-header {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-md);
+        border-left: 5px solid var(--medical-green);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin-bottom: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: var(--medical-green);
+    }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        background-color: var(--medical-green);
+    }
+
+    .stat-title {
+        font-size: 0.9rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-description {
+        font-size: 0.9rem;
+        color: var(--gray);
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        padding: 1rem 1.5rem;
+        text-align: left;
+        background-color: var(--light);
+        color: var(--gray);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        vertical-align: middle;
+    }
+
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .data-table tr:hover {
+        background-color: rgba(74, 111, 165, 0.03);
+    }
+
+    .badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .badge-success {
+        background-color: rgba(58, 175, 133, 0.15);
+        color: var(--success);
+    }
+
+    .badge-warning {
+        background-color: rgba(241, 143, 1, 0.15);
+        color: var(--accent);
+    }
+
+    .badge-danger {
+        background-color: rgba(229, 75, 75, 0.15);
+        color: var(--danger);
+    }
+
+    .badge-info {
+        background-color: rgba(74, 111, 165, 0.15);
+        color: var(--primary);
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--medical-blue);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-outline-primary {
+        border-color: var(--primary);
+        color: var(--primary);
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-danger {
+        background-color: var(--danger);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-danger:hover {
+        background-color: var(--danger);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+        background-color: var(--gray);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state {
+        color: var(--gray);
+        text-align: center;
+        padding: 1rem 0;
+    }
+
+    .pagination .page-link {
+        border-radius: 6px;
+        margin: 0 0.25rem;
+        color: var(--primary);
+    }
+
+    .pagination .page-item.active .page-link {
+        background-color: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .modal-content {
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+        background-color: var(--primary);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-header .btn-close {
+        filter: invert(1);
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 1rem;
+        }
+
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-euro-sign me-2"></i> Mes Remboursements</h1>
+        <div class="btn-toolbar mt-3">
+            <a href="{% url 'create_reimbursement' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nouvelle demande
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Total demandé</p>
+                    <h3 class="stat-value">{{ total_requested|floatformat:2 }} DA</h3>
+                    <p class="stat-description">Montant total des demandes</p>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-hand-holding-usd"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Total approuvé</p>
+                    <h3 class="stat-value">{{ total_approved|floatformat:2 }} DA</h3>
+                    <p class="stat-description">Montant total approuvé</p>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">En attente</p>
+                    <h3 class="stat-value">{{ pending_count }}</h3>
+                    <p class="stat-description">Demandes en attente</p>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Approuvées</p>
+                    <h3 class="stat-value">{{ approved_count }}</h3>
+                    <p class="stat-description">Demandes approuvées</p>
+                </div>
+                <div class="stat-icon">
+                    <i class="fas fa-thumbs-up"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reimbursements Table -->
+    <div class="stat-card">
+        <div class="stat-header">
+            <div>
+                <p class="stat-title">Liste des remboursements</p>
+                <h3 class="stat-value">{{ reimbursements|length }}</h3>
+                <p class="stat-description">Historique des demandes</p>
+            </div>
+            <div class="stat-icon">
+                <i class="fas fa-table"></i>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if reimbursements %}
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date de soumission</th>
+                                <th>Consultation</th>
+                                <th>Montant demandé</th>
+                                <th>Montant approuvé</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reimbursement in reimbursements %}
+                            <tr>
+                                <td>{{ reimbursement.submitted_at|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <strong>Dr. {{ reimbursement.consultation.doctor.user.get_full_name }}</strong><br>
+                                    <small class="text-muted">{{ reimbursement.consultation.date|date:"d/m/Y" }}</small>
+                                </td>
+                                <td>{{ reimbursement.amount_requested|floatformat:2 }} DA</td>
+                                <td>
+                                    {% if reimbursement.amount_approved %}
+                                        {{ reimbursement.amount_approved|floatformat:2 }} DA
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if reimbursement.status == 'pending' %}
+                                        <span class="badge badge-warning">En attente</span>
+                                    {% elif reimbursement.status == 'approved' %}
+                                        <span class="badge badge-success">Approuvé</span>
+                                    {% elif reimbursement.status == 'rejected' %}
+                                        <span class="badge badge-danger">Rejeté</span>
+                                    {% elif reimbursement.status == 'paid' %}
+                                        <span class="badge badge-info">Payé</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'reimbursement_detail' reimbursement.id %}" 
+                                           class="btn btn-sm btn-outline-primary" title="Voir détails">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if reimbursement.status == 'pending' %}
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-outline-danger" 
+                                                    onclick="cancelReimbursement('{{ reimbursement.id }}')"
+                                                    title="Annuler">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if reimbursements.has_other_pages %}
+                    <nav aria-label="Pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if reimbursements.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">« Première</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ reimbursements.previous_page_number }}">Précédente</a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ reimbursements.number }} sur {{ reimbursements.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if reimbursements.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ reimbursements.next_page_number }}">Suivante</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ reimbursements.paginator.num_pages }}">Dernière »</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-receipt fa-3x mb-3"></i>
+                    <h5>Aucune demande de remboursement</h5>
+                    <p>Vous n'avez pas encore fait de demande de remboursement.</p>
+                    <a href="{% url 'create_reimbursement' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Créer une demande
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Cancel Confirmation Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelModalLabel">Confirmer l'annulation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Êtes-vous sûr de vouloir annuler cette demande de remboursement ?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Non</button>
+                    <button type="button" class="btn btn-danger" id="confirmCancel">Oui, annuler</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CSRF Token -->
+    {% csrf_token %}
+
+    <script>
+        let reimbursementToCancel = null;
+
+        function cancelReimbursement(reimbursementId) {
+            reimbursementToCancel = reimbursementId;
+            const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+            modal.show();
+        }
+
+        document.getElementById('confirmCancel').addEventListener('click', function() {
+            if (reimbursementToCancel) {
+                fetch(`/reimbursements/${reimbursementToCancel}/cancel/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Erreur: ' + (data.message || 'Une erreur inconnue s\'est produite'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Une erreur s\'est produite lors de l\'annulation.');
+                });
+
+                const modal = bootstrap.Modal.getInstance(document.getElementById('cancelModal'));
+                modal.hide();
+                reimbursementToCancel = null;
+            }
+        });
+    </script>
+</div>
+{% endblock %}
