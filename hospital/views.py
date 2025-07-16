@@ -755,7 +755,9 @@ def delete_document(request, document_id):
             # Supprimer du MFS (optionnel)
             try:
                 mfs_path = f"/documents/{title}"
+                client = ipfshttpclient.connect()
                 client.files.rm(mfs_path)
+                
             except Exception as e:
                 logger.warning("Erreur IPFS MFS (non bloquante): %s", e)
 
@@ -900,7 +902,7 @@ def cancel_reimbursement(request, reimbursement_id):
             wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
             if not wallet_with_private:
                 messages.error(request, "Erreur système: Clé de sécurité manquante")
-                return redirect('patient_records', patient_id=patient_id)
+                return redirect('patient_records', patient_id=patient.id)
 
 
 
@@ -946,7 +948,7 @@ def cancel_reimbursement(request, reimbursement_id):
                 transaction_data = {
                     'action': 'update_blocks',
                     'ipfs_hash': ipfs_hash,
-                    'timestamp': time.time()
+                    'timestamp':timezone.now().isoformat(),
                 }
                 ipfs_transaction = Transaction(
                     sender=patient.user.identity,
@@ -979,9 +981,6 @@ def patient_records(request, patient_id):
         doctor = request.user.doctor
         patient = get_object_or_404(Patient, id=patient_id)
         
-        # Handle blockchain registration request
-        if request.method == 'POST' and 'register_blockchain' in request.POST:
-            return register_patient_records_to_blockchain(request, patient, doctor)
         
         # Get patient records
         documents = MedicalDocument.objects.filter(patient=patient, is_active=True)
@@ -1060,7 +1059,7 @@ def generate_prescription_pdf(request, consultation_id):
             fontSize=10,
             leading=12,
             textColor=colors.black,
-            alignment=2,  # Right alignment
+            alignment=2,  
         )
         
         # Style pour les informations du patient
@@ -1167,19 +1166,16 @@ def generate_prescription_pdf(request, consultation_id):
         elements.append(Paragraph(date_consultation, styles['Normal']))
         elements.append(Spacer(1, 25))
         
-       
         title = Paragraph("ORDONNANCE", title_style)
         elements.append(title)
         elements.append(Spacer(1, 20))
         
-       
         if prescriptions:
             # En-tête des médicaments
             elements.append(Paragraph("<b>Prescription médicale:</b>", styles['Heading3']))
             elements.append(Spacer(1, 10))
             
             for i, prescription in enumerate(prescriptions, 1):
-               
                 medication_text = f"""
                 <b>{i}. {prescription.medication_name.upper()}</b>&nbsp;&nbsp;&nbsp;&nbsp;{prescription.dosage}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{prescription.instructions}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{prescription.duration_days} jours<br/>
                 """
@@ -1191,7 +1187,6 @@ def generate_prescription_pdf(request, consultation_id):
         
         elements.append(Spacer(1, 40))
         
-       
         signature_text = f"""
         <br/><br/>
         <font size="10">
@@ -1209,7 +1204,6 @@ def generate_prescription_pdf(request, consultation_id):
         ]))
         
         elements.append(signature_table)
-        
         
         elements.append(Spacer(1, 20))
         footer_text = f"""
@@ -1235,8 +1229,8 @@ def generate_prescription_pdf(request, consultation_id):
             ipfs_data = {
                 'consultation_id': consultation.id,
                 'metadata': {
-                    'patient': str(patient.id),
-                    'doctor': str(doctor.id),
+                    'patient_identity': patient.user.identity,  
+                    'doctor_identity': doctor.user.identity,
                     'date': consultation.date.isoformat(),
                     'consultation_type': 'prescription',
                     'filename': filename,
@@ -1277,7 +1271,6 @@ def generate_prescription_pdf(request, consultation_id):
                     ipfs_hash=ipfs_cid
                 )
                
-                
                 # Method 1: Direct ContentFile approach
                 try:
                     pdf_file = ContentFile(pdf_content, name=filename)
@@ -1325,42 +1318,20 @@ def generate_prescription_pdf(request, consultation_id):
                 except Exception as basic_doc_error:
                     logger.error(f"Failed to create even basic document: {basic_doc_error}")
 
-            # 4. Create digital signature for the prescription
-            try:
-                prescription_data = {
-                    'consultation_id': consultation.id,
-                    'document_id': medical_doc.id if medical_doc else None,
-                    'ipfs_cid': ipfs_cid,
-                    'timestamp': timezone.now().isoformat(),
-                    'hash': hashlib.sha256(pdf_content).hexdigest(),
-                    'patient_id': patient.id,
-                    'doctor_id': doctor.id,
-                    'prescription_count': prescriptions.count()
-                }
-                signature = wallet_obj.sign_data(json.dumps(prescription_data, sort_keys=True))
-                logger.info("Digital signature created successfully")
-            except Exception as signature_error:
-                logger.error(f"Digital signature creation failed: {signature_error}")
-                signature = None
-
-            # 5. Create blockchain transaction
+            # 4. Create blockchain transaction
             try:
                 transaction_data = {
                     'action': 'prescription_generated',
                     'consultation_id': consultation.id,
                     'document_id': medical_doc.id if medical_doc else None,
-                    'patient_id': patient.id,
-                    'doctor_id': doctor.id,
-                    'user_id': request.user.id,
+                    'patient_identity': patient.user.identity,
+                    'doctor_identity': doctor.user.identity,  
                     'timestamp': timezone.now().isoformat(),
                     'hash': hashlib.sha256(pdf_content).hexdigest(),
-                    'digital_signature': signature,
-                    'ipfs_cid': ipfs_cid,
-                    'details': f'Prescription generated for consultation on {consultation.date.strftime("%d/%m/%Y")}'
                 }
 
                 blockchain_transaction = Transaction(
-                    sender=wallet_obj,
+                    sender=doctor.user.identity,
                     recipient="System",
                     data=transaction_data
                 )
@@ -1381,7 +1352,6 @@ def generate_prescription_pdf(request, consultation_id):
                 logger.error(f"Blockchain transaction failed: {blockchain_error}")
                 # Continue without blockchain recording
 
-            
             logger.info(f"Prescription generated successfully for consultation {consultation.id}")
 
             # Return the PDF
@@ -2056,12 +2026,13 @@ def verify_user(request, user_id):
         if action == "verify":
             user.is_verified = True
             user.save()
-            msg = "Compte vérifié avec succès"
+            messages.success(request, "Compte vérifié avec succès")
+
         elif action == "suspend":
             user.is_verified = False
             user.is_active = False
             user.save()
-            msg = "Compte suspendu"
+            messages.warning(request, "Compte suspendu")
         else:
             messages.error(request, "Action invalide")
             return redirect('manage_users')
@@ -2091,7 +2062,6 @@ def verify_user(request, user_id):
                 miner_address=NODE_IDENTIFIER
             )
             
-            messages.success(request, f"{msg} | Transaction réussie")
             
         except Exception as e:
             logger.exception("ERREUR BLOCKCHAIN")
@@ -3026,7 +2996,7 @@ def delete_analysis(request, analysis_id):
 
                 logger.info(f"Analyse {analysis_id} supprimée et enregistrée dans la blockchain (ID de transaction: {blockchain_transaction.transaction_id})")
                 messages.success(request, 'Analyse supprimée avec succès.')
-                return redirect('analysis_list', patient_id=patient_id)
+                return redirect('analysis_list', patient_id=analysis.patient.user.id)
 
         except Exception as e:
             logger.exception(f"Erreur lors de la suppression de l'analyse {analysis_id}: {e}")
