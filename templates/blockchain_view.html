@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <header class="mb-5 text-center">
+        <h1 class="display-4 text-primary">Medical Blockchain Explorer</h1>
+        <div class="d-flex justify-content-center gap-4 my-4">
+            <span class="badge bg-{% if is_valid %}success{% else %}danger{% endif %} fs-6">
+                Chain Status: {{ is_valid|yesno:"Valid,Invalid" }}
+            </span>
+            <span class="badge bg-info fs-6">Blocks: {{ blocks|length }}</span>
+            <span class="badge bg-warning text-dark fs-6">Pending TX: {{ pending_transactions|length }}</span>
+        </div>
+    </header>
+
+    <div class="row">
+        <!-- Blocks Section -->
+        <div class="col-lg-8">
+            <h2 class="mb-4 border-bottom pb-2">
+                <i class="bi bi-cube me-2"></i>Blocks
+            </h2>
+            
+            {% if blocks %}
+                <div class="accordion" id="blocksAccordion">
+                    {% for block in blocks %}
+                    <div class="accordion-item mb-3 shadow-sm">
+                        <h3 class="accordion-header" id="heading{{ block.index }}">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ block.index }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ block.index }}">
+                                <span class="me-3 badge bg-secondary">#{{ block.index }}</span>
+                                <span class="font-monospace small text-truncate me-2">{{ block.hash|slice:":16" }}...</span>
+                                <span class="ms-auto small text-muted">{{ block.timestamp|date:"M d, Y H:i" }}</span>
+                            </button>
+                        </h3>
+                        <div id="collapse{{ block.index }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ block.index }}" data-bs-parent="#blocksAccordion">
+                            <div class="accordion-body">
+                                <div class="mb-3">
+                                    <h5 class="d-inline-block me-2">Hash:</h5>
+                                    <code class="font-monospace small">{{ block.hash }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2 py-0" onclick="copyToClipboard('{{ block.hash }}')">Copy</button>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <h5 class="d-inline-block me-2">Previous Hash:</h5>
+                                    <code class="font-monospace small">{{ block.previous_hash }}</code>
+                                </div>
+                                
+                                <div class="d-flex gap-4 mb-3">
+                                    <div>
+                                        <h5 class="d-inline-block me-2">Nonce:</h5>
+                                        <span class="badge bg-dark">{{ block.nonce }}</span>
+                                    </div>
+                                    <div>
+                                        <h5 class="d-inline-block me-2">Transactions:</h5>
+                                        <span class="badge bg-primary">{{ block.transactions|length }}</span>
+                                    </div>
+                                </div>
+                                
+                                {% if block.transactions %}
+                                <div class="mt-4">
+                                    <h5><i class="bi bi-list-check me-2"></i>Transactions</h5>
+                                    <div class="list-group">
+                                        {% for tx in block.transactions %}
+                                        <div class="list-group-item">
+                                            <div class="d-flex justify-content-between">
+                                                <h6 class="mb-1 text-primary">{{ tx.data.action|default:"Unknown Action" }}</h6>
+                                                <small class="text-muted">{{ tx.timestamp|date:"H:i:s" }}</small>
+                                            </div>
+                                            <div class="row small mt-2">
+                                                <div class="col-md-6">
+                                                    <strong>From:</strong> 
+                                                    <span class="font-monospace" title="{{ tx.sender }}">
+                                                        {{ tx.sender|slice:":8" }}...{{ tx.sender|slice:"-8:" }}
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>To:</strong> {{ tx.recipient }}
+                                                </div>
+                                            </div>
+                                            <div class="mt-2">
+                                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#txDetails{{ tx.transaction_id }}" aria-expanded="false">
+                                                    Show Details
+                                                </button>
+                                                <div class="collapse mt-2" id="txDetails{{ tx.transaction_id }}">
+                                                    <div class="card card-body small">
+                                                        <div class="mb-2">
+                                                            <strong>TX ID:</strong> 
+                                                            <code>{{ tx.transaction_id }}</code>
+                                                        </div>
+                                                        <div class="mb-2">
+                                                            <strong>Data:</strong>
+                                                            <ul class="mb-1">
+                                                                {% for key, value in tx.data.items %}
+                                                                    {% if key != 'action' %}
+                                                                    <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+                                                                    {% endif %}
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        <div>
+                                                            <strong>Signature:</strong> 
+                                                            <code class="d-block text-truncate" style="max-width: 300px;">{{ tx.signature }}</code>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-info mt-3">No transactions in this block</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">No blocks in the blockchain</div>
+            {% endif %}
+        </div>
+
+        <!-- Pending Transactions Section -->
+        <div class="col-lg-4">
+            <div class="sticky-top" style="top: 20px;">
+                <h2 class="mb-4 border-bottom pb-2">
+                    <i class="bi bi-hourglass-split me-2"></i>Pending Transactions
+                </h2>
+                
+                {% if pending_transactions %}
+                    <div class="list-group">
+                        {% for tx in pending_transactions %}
+                        <div class="list-group-item mb-2 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1 text-warning">{{ tx.data.action|default:"Unknown Action" }}</h6>
+                                    <small class="text-muted">{{ tx.timestamp|date:"M d, H:i" }}</small>
+                                </div>
+                                <span class="badge bg-secondary">Pending</span>
+                            </div>
+                            <div class="small mt-2">
+                                <div>
+                                    <strong>From:</strong> 
+                                    <span class="font-monospace">{{ tx.sender|slice:":8" }}...{{ tx.sender|slice:"-8:" }}</span>
+                                </div>
+                                <div>
+                                    <strong>To:</strong> {{ tx.recipient }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-success">No pending transactions</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Optional: Show a tooltip or alert that text was copied
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
+</script>
+
+<style>
+.accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    box-shadow: none;
+}
+.font-monospace {
+    font-family: 'Courier New', monospace;
+}
+.list-group-item {
+    transition: all 0.2s;
+}
+.list-group-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+
+{% block title %}Nouvelle demande de remboursement{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .dashboard-header {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-md);
+        border-left: 5px solid var(--medical-orange);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin-bottom: 0;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: var(--medical-orange);
+    }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        background-color: var(--medical-orange);
+    }
+
+    .stat-title {
+        font-size: 0.9rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-description {
+        font-size: 0.9rem;
+        color: var(--gray);
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid var(--border-light);
+        padding: 0.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
+    }
+
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: var(--danger);
+    }
+
+    .invalid-feedback {
+        color: var(--danger);
+        font-size: 0.85rem;
+    }
+
+    .input-group-text {
+        border-radius: 6px;
+        background-color: var(--light);
+        color: var(--gray);
+    }
+
+    .alert {
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .alert-danger {
+        background-color: rgba(229, 75, 75, 0.1);
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .alert-info {
+        background-color: rgba(74, 111, 165, 0.1);
+        color: var(--primary);
+        border: 1px solid var(--primary);
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--medical-blue);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+        background-color: var(--gray);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state {
+        color: var(--gray);
+        text-align: center;
+        padding: 1rem 0;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 1rem;
+        }
+
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-euro-sign me-2"></i> Nouvelle demande de remboursement</h1>
+        <div class="btn-toolbar mt-3">
+            <a href="{% url 'patient_reimbursements' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <p class="stat-title">Créer une demande</p>
+                        <p class="stat-description">Remplissez les informations pour soumettre une nouvelle demande de remboursement</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if available_consultations %}
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            {% if form.errors %}
+                                <div class="alert alert-danger">
+                                    <strong>Erreurs dans le formulaire :</strong>
+                                    <ul class="mb-0">
+                                        {% for field, errors in form.errors.items %}
+                                            {% for error in errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="form-group">
+                                <label for="{{ form.consultation.id_for_label }}" class="form-label">
+                                    {{ form.consultation.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.consultation }}
+                                {% if form.consultation.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.consultation.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Sélectionnez la consultation pour laquelle vous souhaitez demander un remboursement.
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="{{ form.amount_requested.id_for_label }}" class="form-label">
+                                    {{ form.amount_requested.label }} <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    {{ form.amount_requested }}
+                                    <div class="input-group-append">
+                                        <span class="input-group-text">DA</span>
+                                    </div>
+                                </div>
+                                {% if form.amount_requested.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.amount_requested.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Montant que vous souhaitez vous faire rembourser.
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                    {{ form.notes.label }}
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {{ form.notes.errors.0 }}
+                                    </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Ajoutez des notes ou des justifications pour votre demande (optionnel).
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Information :</strong> Votre demande sera examinée par l'administration. 
+                                    Vous recevrez une notification une fois qu'elle aura été traitée.
+                                </div>
+                            </div>
+                            
+                            <div class="form-group text-center">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-paper-plane"></i> Soumettre la demande
+                                </button>
+                                <a href="{% url 'patient_reimbursements' %}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-times"></i> Annuler
+                                </a>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                            <h5>Aucune consultation disponible</h5>
+                            <p>Vous n'avez pas de consultations disponibles pour lesquelles vous pouvez demander un remboursement.</p>
+                            <a href="{% url 'patient_reimbursements' %}" class="btn btn-primary">
+                                <i class="fas fa-arrow-left"></i> Retour aux remboursements
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const amountField = document.getElementById('{{ form.amount_requested.id_for_label }}');
+    const consultationField = document.getElementById('{{ form.consultation.id_for_label }}');
+    
+    if (amountField) {
+        amountField.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value < 0) {
+                this.value = 0;
+            }
+        });
+    }
+    
+    if (form) {
+        form.addEventListener('submit', function(event) {
+            let isValid = true;
+            
+            if (consultationField && !consultationField.value) {
+                isValid = false;
+                consultationField.classList.add('is-invalid');
+            } else if (consultationField) {
+                consultationField.classList.remove('is-invalid');
+            }
+            
+            if (amountField && (!amountField.value || parseFloat(amountField.value) <= 0)) {
+                isValid = false;
+                amountField.classList.add('is-invalid');
+            } else if (amountField) {
+                amountField.classList.remove('is-invalid');
+            }
+            
+            if (!isValid) {
+                event.preventDefault();
+                alert('Veuillez remplir tous les champs obligatoires correctement.');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

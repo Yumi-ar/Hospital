@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Us | Hospital Management</title>
+
+    <link rel="stylesheet" type='text/css' href="{% static 'css/style.css' %}">
+   </head>
+<body>
+    {% include "navbar.html" %}
+    
+    <section class="hero">
+        <div class="container">
+            <h1>À propos de notre hôpital</h1>
+            <p>Nous nous engageons à fournir des services de santé exceptionnels et à créer un environnement propice à la guérison pour nos patients.</p>
+        </div>
+    </section>
+    
+    <section class="about-section">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h3 style="text-align: center;">Bienvenue sur notre site web</h3>
+                   </div>
+            </div>
+            
+            <div class="about-content">
+                <div class="about-image">
+                    <img src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Our medical team">
+                </div>
+                <div class="about-text">
+                    <h3>Notre Mission</h3>
+                    <p>ONotre mission est de simplifier l'administration des soins de santé et d'améliorer les résultats pour les patients grâce à un Système de Gestion Hospitalière fiable, convivial et complet. Nous combinons la technologie moderne avec des soins empreints de compassion pour aider les professionnels de la santé à offrir des services de haute qualité, centrés sur le patient.</p>
+                </div>
+                
+            </div>
+        </div>
+    </section>
+    
+
+    {% include "footer.html" %}   
+</body>
+</html>

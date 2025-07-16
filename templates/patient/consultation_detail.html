@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultation du {{ consultation.date|date:"d/m/Y" }} - {{ patient.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-stethoscope text-primary"></i> 
+        Consultation du {{ consultation.date|date:"d/m/Y" }}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'my_medical_records' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <button onclick="window.print()" class="btn btn-outline-primary">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Informations générales -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-info-circle"></i> Informations de la consultation
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Date:</strong> {{ consultation.date|date:"d/m/Y à H:i" }}</p>
+                        <p><strong>Médecin:</strong> Dr. {{ consultation.doctor.user.get_full_name }}</p>
+                        <p><strong>Spécialité:</strong> {{ consultation.doctor.specialization }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Durée:</strong> 
+                            {% if consultation.duration %}
+                                {{ consultation.duration }} minutes
+                            {% else %}
+                                Non renseignée
+                            {% endif %}
+                        </p>
+                        <p><strong>Coût:</strong> {{ consultation.cost }} DA</p>
+                        <p><strong>Type:</strong> {{ consultation.get_consultation_type_display|default:"Consultation générale" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-user"></i> Patient
+            </div>
+            <div class="card-body">
+                <p><strong>Nom:</strong> {{ patient.user.get_full_name }}</p>
+                <p><strong>Âge:</strong> {{ patient.age }} ans</p>
+                <p><strong>Sexe:</strong> {{ patient.get_gender_display }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Symptômes et Diagnostic -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-white">
+                <i class="fas fa-exclamation-triangle"></i> Symptômes rapportés
+            </div>
+            <div class="card-body">
+                {% if consultation.symptoms %}
+                    <p class="card-text">{{ consultation.symptoms|linebreaks }}</p>
+                {% else %}
+                    <p class="text-muted font-italic">Aucun symptôme spécifique rapporté.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-clipboard-check"></i> Diagnostic
+            </div>
+            <div class="card-body">
+                {% if consultation.diagnosis %}
+                    <p class="card-text">{{ consultation.diagnosis|linebreaks }}</p>
+                {% else %}
+                    <p class="text-muted font-italic">Diagnostic en cours d'établissement.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Examen clinique -->
+{% if consultation.physical_examination %}
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <i class="fas fa-search"></i> Examen clinique
+    </div>
+    <div class="card-body">
+        <p>{{ consultation.physical_examination|linebreaks }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Signes vitaux -->
+{% if consultation.vital_signs %}
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <i class="fas fa-heartbeat"></i> Signes vitaux
+    </div>
+    <div class="card-body">
+        <div class="row">
+            {% if consultation.blood_pressure %}
+            <div class="col-md-3">
+                <div class="text-center p-3 border rounded">
+                    <i class="fas fa-tachometer-alt fa-2x text-danger mb-2"></i>
+                    <h5>{{ consultation.blood_pressure }}</h5>
+                    <small class="text-muted">Tension artérielle</small>
+                </div>
+            </div>
+            {% endif %}
+            {% if consultation.heart_rate %}
+            <div class="col-md-3">
+                <div class="text-center p-3 border rounded">
+                    <i class="fas fa-heartbeat fa-2x text-primary mb-2"></i>
+                    <h5>{{ consultation.heart_rate }} bpm</h5>
+                    <small class="text-muted">Fréquence cardiaque</small>
+                </div>
+            </div>
+            {% endif %}
+            {% if consultation.temperature %}
+            <div class="col-md-3">
+                <div class="text-center p-3 border rounded">
+                    <i class="fas fa-thermometer-half fa-2x text-warning mb-2"></i>
+                    <h5>{{ consultation.temperature }}°C</h5>
+                    <small class="text-muted">Température</small>
+                </div>
+            </div>
+            {% endif %}
+            {% if consultation.weight %}
+            <div class="col-md-3">
+                <div class="text-center p-3 border rounded">
+                    <i class="fas fa-weight fa-2x text-info mb-2"></i>
+                    <h5>{{ consultation.weight }} kg</h5>
+                    <small class="text-muted">Poids</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Prescriptions -->
+{% if prescriptions %}
+<div class="card mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <div>
+            <i class="fas fa-prescription-bottle-alt"></i> Ordonnances prescrites
+        </div>
+        <a href="{% url 'prescription_pdf' consultation.id %}" class="btn btn-light btn-sm" target="_blank">
+            <i class="fas fa-file-pdf"></i> Télécharger PDF
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Médicament</th>
+                        <th>Dosage</th>
+                        <th>Instructions</th>
+                        <th>Durée</th>
+                        <th>Fréquence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prescription in prescriptions %}
+                    <tr>
+                        <td>
+                            <strong>{{ prescription.medication_name }}</strong>
+                            {% if prescription.medication_brand %}
+                            <br><small class="text-muted">{{ prescription.medication_brand }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ prescription.dosage }}</td>
+                        <td>{{ prescription.instructions|truncatechars:50 }}</td>
+                        <td>{{ prescription.duration_days }} jours</td>
+                        <td>{{ prescription.frequency|default:"Selon instructions" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Examens radiologiques -->
+{% if radiology_orders %}
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">
+        <i class="fas fa-x-ray"></i> Examens radiologiques prescrits
+    </div>
+    <div class="card-body">
+        {% for radio in radiology_orders %}
+        <div class="card mb-2 border-start border-warning border-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="card-title">{{ radio.get_exam_type_display }} - {{ radio.get_body_part_display }}</h6>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Prescrit le: {{ radio.ordered_date|date:"d/m/Y" }}<br>
+                                {% if radio.scheduled_date %}
+                                Programmé pour le: {{ radio.scheduled_date|date:"d/m/Y" }}<br>
+                                {% endif %}
+                                {% if radio.clinical_indication %}
+                                Indication: {{ radio.clinical_indication }}
+                                {% endif %}
+                            </small>
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <span class="badge 
+                            {% if radio.status == 'completed' %}bg-success
+                            {% elif radio.status == 'scheduled' %}bg-info
+                            {% elif radio.status == 'pending' %}bg-warning
+                            {% else %}bg-secondary{% endif %}">
+                            {{ radio.get_status_display }}
+                        </span>
+                        <br>
+                        <small class="text-muted">
+                            Urgence: {{ radio.get_urgency_display }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Recommandations et suivi -->
+{% if consultation.recommendations %}
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <i class="fas fa-lightbulb"></i> Recommandations et conseils
+    </div>
+    <div class="card-body">
+        <p>{{ consultation.recommendations|linebreaks }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Notes du médecin -->
+{% if consultation.notes %}
+<div class="card mb-4">
+    <div class="card-header bg-light">
+        <i class="fas fa-sticky-note"></i> Notes du médecin
+    </div>
+    <div class="card-body">
+        <p>{{ consultation.notes|linebreaks }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Prochain rendez-vous -->
+{% if consultation.next_appointment_date %}
+<div class="alert alert-info">
+    <i class="fas fa-calendar-plus"></i>
+    <strong>Prochain rendez-vous:</strong> {{ consultation.next_appointment_date|date:"d/m/Y à H:i" }}
+    {% if consultation.next_appointment_notes %}
+    <br><small>{{ consultation.next_appointment_notes }}</small>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+@media print {
+    .btn-toolbar, .card-header .btn {
+        display: none !important;
+    }
+    .card {
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+}
+</style>
+
+{% endblock %}

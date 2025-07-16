@@ -1,0 +1,658 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des remboursements{% endblock %}
+
+{% block content %}
+<style>
+    /* Style moderne pour la gestion des remboursements */
+.reimbursement-management-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+
+.reimbursement-header {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+.reimbursement-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 0;
+}
+
+.reimbursement-subtitle {
+    color: var(--gray);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* Cartes de statistiques avec le style moderne */
+.statistics-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+}
+
+.stat-card.pending::before {
+    background: var(--accent);
+}
+
+.stat-card.approved::before {
+    background: var(--success);
+}
+
+.stat-card.denied::before {
+    background: var(--danger);
+}
+
+.stat-card.amount::before {
+    background: var(--medical-teal);
+}
+
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-icon.pending {
+    background-color: var(--accent);
+}
+
+.stat-icon.approved {
+    background-color: var(--success);
+}
+
+.stat-icon.denied {
+    background-color: var(--danger);
+}
+
+.stat-icon.amount {
+    background-color: var(--medical-teal);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+}
+
+.stat-title {
+    font-size: 0.9rem;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+}
+
+.stat-description {
+    font-size: 0.9rem;
+    color: var(--gray);
+}
+
+/* Section des filtres */
+.filters-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, var(--primary), var(--medical-blue));
+    color: white;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.filters-body {
+    padding: 2rem;
+}
+
+.filters-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-select,
+.form-control {
+    padding: 0.75rem 1rem;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: var(--transition);
+    background-color: white;
+}
+
+.form-select:focus,
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 111, 165, 0.1);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: var(--gray);
+    color: white;
+}
+
+/* Section des données */
+.data-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.data-table th {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    background-color: var(--light);
+    color: var(--gray);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid rgba(0,0,0,0.05);
+}
+
+.data-table td {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    vertical-align: middle;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table tr:hover {
+    background-color: rgba(74, 111, 165, 0.03);
+}
+
+.badge {
+    padding: 0.35rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-pending {
+    background-color: rgba(241, 143, 1, 0.15);
+    color: var(--accent);
+}
+
+.badge-approved {
+    background-color: rgba(58, 175, 133, 0.15);
+    color: var(--success);
+}
+
+.badge-denied {
+    background-color: rgba(229, 75, 75, 0.15);
+    color: var(--danger);
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.btn-outline-info {
+    border: 2px solid var(--medical-teal);
+    color: var(--medical-teal);
+    background: transparent;
+}
+
+.btn-outline-info:hover {
+    background-color: var(--medical-teal);
+    color: white;
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    padding: 2rem 0;
+}
+
+.page-item {
+    list-style: none;
+}
+
+.page-link {
+    padding: 0.5rem 1rem;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-radius: 8px;
+    color: var(--primary);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.page-link:hover {
+    background-color: var(--primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.page-item.active .page-link {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+/* État vide */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--gray);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    .reimbursement-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .filters-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .filter-actions {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .reimbursement-management-container {
+        padding: 1rem;
+    }
+    
+    .statistics-cards {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .reimbursement-header {
+        padding: 1.5rem;
+    }
+    
+    .filters-body {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .statistics-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+}
+
+</style>
+<div class="reimbursement-management-container">
+    <div class="reimbursement-header">
+        <div>
+            <h1>Gestion des remboursements</h1>
+            <p class="reimbursement-subtitle">Traitement et suivi des demandes de remboursement</p>
+        </div>
+    </div>
+
+    <!-- Cartes de statistiques avec le nouveau style -->
+    <div class="statistics-cards">
+        <div class="stat-card pending">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">En attente</p>
+                    <h3 class="stat-value">{{ stats.total_pending }}</h3>
+                    <p class="stat-description">Demandes à traiter</p>
+                </div>
+                <div class="stat-icon pending">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card approved">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Approuvés</p>
+                    <h3 class="stat-value">{{ stats.total_approved }}</h3>
+                    <p class="stat-description">Demandes acceptées</p>
+                </div>
+                <div class="stat-icon approved">
+                    <i class="fas fa-check"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card denied">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Refusés</p>
+                    <h3 class="stat-value">{{ stats.total_denied }}</h3>
+                    <p class="stat-description">Demandes rejetées</p>
+                </div>
+                <div class="stat-icon denied">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card amount">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Montant total</p>
+                    <h3 class="stat-value">{{ stats.total_amount_requested|floatformat:0 }}</h3>
+                    <p class="stat-description">DA demandés</p>
+                </div>
+                <div class="stat-icon amount">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section des filtres -->
+    <div class="filters-section">
+        <div class="section-header">
+            <h3 class="section-title">Filtres de recherche</h3>
+        </div>
+        <div class="filters-body">
+            <form method="GET">
+                <div class="filters-row">
+                    <div class="filter-group">
+                        <label for="status" class="form-label">Statut</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">Tous les statuts</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>En attente</option>
+                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approuvés</option>
+                            <option value="denied" {% if status_filter == 'denied' %}selected{% endif %}>Refusés</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="patient" class="form-label">Patient</label>
+                        <input type="text" name="patient" id="patient" class="form-control" 
+                               placeholder="Rechercher un patient..." value="{{ patient_search|default:'' }}">
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filtrer
+                        </button>
+                        <a href="{% url 'admin_reimbursements' %}" class="btn btn-secondary">
+                            <i class="fas fa-undo"></i> Réinitialiser
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Section des données -->
+    <div class="data-section">
+        <div class="section-header">
+            <h3 class="section-title">Demandes de remboursement</h3>
+        </div>
+        
+        {% if reimbursements %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Patient</th>
+                            <th>Montant demandé</th>
+                            <th>Montant approuvé</th>
+                            <th>Statut</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for reimbursement in reimbursements %}
+                        <tr>
+                            <td><strong>#{{ reimbursement.id }}</strong></td>
+                            <td>
+                                <strong>{{ reimbursement.patient.user.get_full_name }}</strong><br>
+                                <small style="color: var(--gray);">{{ reimbursement.patient.user.email }}</small>
+                            </td>
+                            <td><strong>{{ reimbursement.amount_requested|floatformat:2 }} DA</strong></td>
+                            <td>
+                                {% if reimbursement.amount_approved %}
+                                    <strong>{{ reimbursement.amount_approved|floatformat:2 }} DA</strong>
+                                {% else %}
+                                    <span style="color: var(--gray);">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if reimbursement.status == 'pending' %}
+                                    <span class="badge badge-pending">En attente</span>
+                                {% elif reimbursement.status == 'approved' %}
+                                    <span class="badge badge-approved">Approuvé</span>
+                                {% elif reimbursement.status == 'denied' %}
+                                    <span class="badge badge-denied">Refusé</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ reimbursement.submitted_at|date:"d/m/Y" }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{% url 'reimbursement_detail_admin' reimbursement.id %}" 
+                                       class="btn btn-sm btn-outline-info" title="Voir les détails">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if reimbursement.status == 'pending' %}
+                                    <a href="{% url 'process_reimbursement' reimbursement.id %}"  
+                                       class="btn btn-sm btn-outline-primary" title="Traiter">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if reimbursements.has_other_pages %}
+            <nav aria-label="Pagination des remboursements">
+                <ul class="pagination">
+                    {% if reimbursements.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ reimbursements.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if patient_search %}&patient={{ patient_search }}{% endif %}">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in reimbursements.paginator.page_range %}
+                        {% if reimbursements.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > reimbursements.number|add:'-3' and num < reimbursements.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if patient_search %}&patient={{ patient_search }}{% endif %}">
+                                    {{ num }}
+                                </a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if reimbursements.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ reimbursements.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if patient_search %}&patient={{ patient_search }}{% endif %}">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>Aucune demande de remboursement trouvée</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

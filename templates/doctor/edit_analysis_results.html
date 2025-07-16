@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résultats d'Analyse</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        .parameter-row {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            padding: 15px;
+        }
+        .parameter-row.to-delete {
+            background-color: #f8d7da;
+            opacity: 0.7;
+        }
+        .abnormal-checkbox {
+            transform: scale(1.2);
+        }
+        .delete-parameter {
+            background-color: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 1.2em;
+        }
+        .add-parameter {
+            background-color: #28a745;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+        }
+        .form-section {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #495057;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-edit"></i> Saisir les Résultats d'Analyse</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-0"><strong>Patient:</strong> {{ analysis.patient.user.get_full_name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-0"><strong>Analyse:</strong> {{ analysis.title }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="analysis-form">
+                            {% csrf_token %}
+                            
+                            <!-- Analysis Status and Basic Info -->
+                            <div class="form-section">
+                                <h5 class="section-title"><i class="fas fa-info-circle"></i> Informations Générales</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="{{ form.status.id_for_label }}">Statut *</label>
+                                            {{ form.status }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label for="{{ form.completed_date.id_for_label }}">Date de réalisation</label>
+                                            {{ form.completed_date }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="{{ form.technician.id_for_label }}">Technicien</label>
+                                    {{ form.technician }}
+                                </div>
+                            </div>
+
+                            <!-- Parameters Section -->
+                            <div class="form-section">
+                                <h5 class="section-title">
+                                    <i class="fas fa-vials"></i> Paramètres de l'Analyse
+                                    <button type="button" class="btn add-parameter float-right" id="add-parameter">
+                                        <i class="fas fa-plus"></i> Ajouter un paramètre
+                                    </button>
+                                </h5>
+                                
+                                {{ formset.management_form }}
+                                <div id="parameter-forms">
+                                    {% for form in formset %}
+                                        <div class="parameter-row" data-form-index="{{ forloop.counter0 }}">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Paramètre</label>
+                                                        {{ form.parameter_name }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group">
+                                                        <label>Valeur</label>
+                                                        {{ form.value }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <div class="form-group">
+                                                        <label>Unité</label>
+                                                        {{ form.unit }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group">
+                                                        <label>Valeurs normales</label>
+                                                        {{ form.reference_range }}
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group">
+                                                        <label>Anormal</label>
+                                                        <div class="text-center">
+                                                            {{ form.is_abnormal }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <div class="form-group">
+                                                        <label>&nbsp;</label>
+                                                        <div class="text-center">
+                                                            <button type="button" class="delete-parameter">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label>Commentaire</label>
+                                                        {{ form.comment }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {{ form.DELETE }}
+                                            {% for hidden in form.hidden_fields %}
+                                                {{ hidden }}
+                                            {% endfor %}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Results and Interpretation -->
+                            <div class="form-section">
+                                <h5 class="section-title"><i class="fas fa-file-medical-alt"></i> Résultats et Interprétation</h5>
+                                <div class="form-group">
+                                    <label for="{{ form.results.id_for_label }}">Résultats détaillés</label>
+                                    {{ form.results }}
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="{{ form.interpretation.id_for_label }}">Interprétation médicale</label>
+                                    {{ form.interpretation }}
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="{{ form.recommendations.id_for_label }}">Recommandations</label>
+                                    {{ form.recommendations }}
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Sauvegarder les Résultats
+                                </button>
+                                <a href="{% url 'analysis_list' analysis.patient.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Retour
+                                </a>
+                                {% if analysis.status == 'completed' %}
+                                <a href="{% url 'generate_analysis_pdf' analysis.id %}" class="btn btn-info">
+                                    <i class="fas fa-file-pdf"></i> Générer PDF
+                                </a>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty Parameter Form Template (Hidden) -->
+    <div id="empty-parameter-form" style="display: none;">
+        <div class="parameter-row" data-form-index="__prefix__">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label>Paramètre</label>
+                        <input type="text" name="form-__prefix__-parameter_name" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Valeur</label>
+                        <input type="text" name="form-__prefix__-value" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="form-group">
+                        <label>Unité</label>
+                        <input type="text" name="form-__prefix__-unit" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Valeurs normales</label>
+                        <input type="text" name="form-__prefix__-reference_range" class="form-control">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>Anormal</label>
+                        <div class="text-center">
+                            <input type="checkbox" name="form-__prefix__-is_abnormal" class="abnormal-checkbox">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-1">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <div class="text-center">
+                            <button type="button" class="delete-parameter">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="form-group">
+                        <label>Commentaire</label>
+                        <textarea name="form-__prefix__-comment" class="form-control" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="form-__prefix__-DELETE" value="">
+            <input type="hidden" name="form-__prefix__-id" value="">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let formIndex = $('#parameter-forms .parameter-row').length;
+            
+            // Add new parameter form
+            $('#add-parameter').click(function() {
+                let newForm = $('#empty-parameter-form .parameter-row').clone();
+                newForm.html(newForm.html().replace(/__prefix__/g, formIndex));
+                newForm.attr('data-form-index', formIndex);
+                $('#parameter-forms').append(newForm);
+                
+                // Update management form
+                $('#id_form-TOTAL_FORMS').val(formIndex + 1);
+                formIndex++;
+            });
+            
+            // Delete parameter form
+            $(document).on('click', '.delete-parameter', function() {
+                let parameterRow = $(this).closest('.parameter-row');
+                let deleteInput = parameterRow.find('input[name$="-DELETE"]');
+                
+                if (deleteInput.val() === 'on') {
+                    // Unmark for deletion
+                    deleteInput.val('');
+                    parameterRow.removeClass('to-delete');
+                    $(this).html('<i class="fas fa-trash"></i>');
+                } else {
+                    // Mark for deletion
+                    deleteInput.val('on');
+                    parameterRow.addClass('to-delete');
+                    $(this).html('<i class="fas fa-undo"></i>');
+                }
+            });
+            
+            // Auto-calculate age and highlight abnormal values
+            $('.abnormal-checkbox').change(function() {
+                let row = $(this).closest('.parameter-row');
+                if ($(this).is(':checked')) {
+                    row.find('.form-control').addClass('border-warning');
+                } else {
+                    row.find('.form-control').removeClass('border-warning');
+                }
+            });
+            
+            // Initialize existing abnormal checkboxes
+            $('.abnormal-checkbox:checked').each(function() {
+                $(this).closest('.parameter-row').find('.form-control').addClass('border-warning');
+            });
+        });
+    </script>
+</body>
+</html>

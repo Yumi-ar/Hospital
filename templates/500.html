@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Erreur Serveur{% endblock %}
+
+{% block content %}
+<div class="text-center mt-5">
+    <div class="error-template">
+        <h1>Oops!</h1>
+        <h2>500 Erreur Serveur</h2>
+        <div class="error-details">
+            Désolé, une erreur interne du serveur s'est produite!
+        </div>
+        <div class="error-actions mt-4">
+            <a href="{% url 'patient_dashboard' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-home"></i> Retour à l'accueil
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<!-- Additional JavaScript for Permission Management -->
+<script>
+function revokePermission(permissionId) {
+    if (confirm('Êtes-vous sûr de vouloir révoquer cette autorisation ?')) {
+        fetch(`/revoke-permission/${permissionId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erreur lors de la révocation de l\'autorisation');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erreur lors de la révocation de l\'autorisation');
+        });
+    }
+}
+</script>
