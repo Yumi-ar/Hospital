@@ -13,31 +13,28 @@ urlpatterns = [
     path('contact-us', views.contact, name='contactus'),
     
     path('register/', views.registration_choice, name='registration_choice'),
-    path('login/', views.login_view, name='login'),  # Added trailing slash
+    path('login/', views.login_view, name='login'),  
     path('logout/', views.logout_view, name='logout'), 
     
     # Registration
     path('register/patient/', views.register_patient, name='register_patient'),
     path('register/doctor/', views.register_doctor, name='register_doctor'),
-    path('register/admin/', views.register_admin, name='register_admin'), 
+    path('register/administrator/', views.register_admin, name='register_admin'), 
    
     # Admin URLs
-    path('admin/dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('admin/manage-users/', views.manage_users, name='manage_users'),
-    path('admin/users/verify/<int:user_id>/', views.verify_user, name='verify_user'),
-    path('admin/reimbursements/', views.admin_reimbursements, name='admin_reimbursements'),
-    path('admin/reimbursements/<int:reimbursement_id>/', views.reimbursement_detail_admin, name='reimbursement_detail_admin'),
-    path('admin/reimbursements/<int:reimbursement_id>/process/', views.process_reimbursement, name='process_reimbursement'),
-
+    path('administrator/dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('administrator/manage-users/', views.manage_users, name='manage_users'),
+    path('administrator/users/verify/<int:user_id>/', views.verify_user, name='verify_user'),
+    path('administrator/reimbursements/', views.admin_reimbursements, name='admin_reimbursements'),
+    path('adadministratormin/reimbursements/<int:reimbursement_id>/', views.reimbursement_detail_admin, name='reimbursement_detail_admin'),
+    path('administrator/reimbursements/<int:reimbursement_id>/process/', views.process_reimbursement, name='process_reimbursement'),
+    path('administrator/create/<str:user_type>/', views.create_user, name='create_user'),
     # Patient URLs
     path('patient/dashboard/', views.patient_dashboard, name='patient_dashboard'),
-    path('patient/permissions/', views.manage_permissions, name='manage_permissions'),
-    path('patient/respond-to-request/<int:request_id>/', views.respond_to_access_request, name='respond_to_access_request'),
-    
+   
     path('patient/my-records/', views.my_medical_records, name='my_medical_records'),
     path('patient/consultation/<int:consultation_id>/', views.view_consultation_detail, name='consultation_detail'),
     path('patient/document/<int:document_id>/download/', views.download_medical_document, name='download_document'),
-    path('patient/blockchain-summary/', views.patient_blockchain_summary, name='blockchain_summary'),
     path('patient/export-records/', views.export_medical_records, name='export_records'),
 
 
@@ -61,12 +58,12 @@ urlpatterns = [
 
     # Doctor URLs
     path('doctor/dashboard/', views.doctor_dashboard, name='doctor_dashboard'),
-    path('doctor/request-access/', views.request_patient_access, name='request_patient_access'),
+    # path('doctor/request-access/', views.request_patient_access, name='request_patient_access'),
     path('doctor/patient//<int:patient_id>/', views.patient_records, name='patient_records'),
     path('doctor/prescription/<int:patient_id>/', views.create_prescription, name='create_prescription'),
     path('prescription/pdf/<int:consultation_id>/', views.generate_prescription_pdf, name='prescription_pdf'),
     path('consultations/', views.consultations_list, name='consultations'),
-    path('consultations/new/', views.create_consultation, name='create_consultation'),
+    path('consultations/create/', views.create_consultation, name='create_consultation'),
     path('consultations/<int:consultation_id>/', views.consultation_details, name='consultation_details'),
     path('consultations/<int:consultation_id>/edit/', views.edit_consultation, name='edit_consultation'),
     path('consultations/<int:consultation_id>/delete/', views.delete_consultation, name='delete_consultation'),
@@ -89,7 +86,6 @@ urlpatterns = [
 
 
     path('blockchain/', views.view_blockchain, name='view_blockchain'),
-    path('vuebdd/', admin.site.urls),
 
 ]
 
