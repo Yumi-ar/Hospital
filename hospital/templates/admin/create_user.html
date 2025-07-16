@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Créer un {{ user_type }}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Enregistrer</button>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">Annuler</a>
+    </form>
+</div>
+
+<style>
+   
+    .form-control {
+        margin-bottom: 15px;
+    }
+    .helptext {
+        font-size: 0.8em;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}

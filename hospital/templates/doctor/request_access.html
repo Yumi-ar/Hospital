@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Demander l'Accès Patient{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Demander l'Accès à un Patient</h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-user-plus"></i> Nouvelle Demande d'Accès
+            </div>
+            <div class="card-body">
+                <form method="post" id="access-form">
+                    {% csrf_token %}
+                    
+                    <!-- Sélection du patient -->
+                    <div class="mb-3">
+                        <label for="{{ form.patient.id_for_label }}" class="form-label">
+                            <i class="fas fa-user-injured"></i> {{ form.patient.label }}
+                        </label>
+                        {{ form.patient }}
+                        {% if form.patient.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ form.patient.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Sélectionnez le patient pour lequel vous souhaitez demander l'accès.
+                        </div>
+                    </div>
+
+                    <!-- Motif de la demande -->
+                    <div class="mb-3">
+                        <label for="{{ form.reason.id_for_label }}" class="form-label">
+                            <i class="fas fa-clipboard-list"></i> {{ form.reason.label }}
+                        </label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                            <div class="text-danger small mt-1">
+                                {{ form.reason.errors }}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            Expliquez pourquoi vous avez besoin d'accéder au dossier médical de ce patient.
+                        </div>
+                    </div>
+
+                    <!-- Aperçu du patient sélectionné -->
+                    <div id="patient-preview" class="alert alert-info" style="display: none;">
+                        <h6><i class="fas fa-info-circle"></i> Patient sélectionné :</h6>
+                        <div id="patient-details"></div>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'doctor_dashboard' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Retour au tableau de bord
+                        </a>
+                        <button type="submit" class="btn btn-outline-primary btn-sm" id="submit-btn">
+                            <i class="fas fa-paper-plane"></i> Envoyer la Demande
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Aide contextuelle -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6><i class="fas fa-question-circle"></i> Aide</h6>
+                <ul class="mb-0">
+                    <li>Sélectionnez un patient dans la liste déroulante</li>
+                    <li>Fournissez un motif détaillé pour votre demande d'accès</li>
+                    <li>Le patient recevra votre demande</li>
+                    <li>Vous serez notifié dès que votre demande sera traitée</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const patientSelect = document.getElementById('{{ form.patient.id_for_label }}');
+    const patientPreview = document.getElementById('patient-preview');
+    const patientDetails = document.getElementById('patient-details');
+    const submitBtn = document.getElementById('submit-btn');
+
+    // Afficher les détails du patient sélectionné
+    patientSelect.addEventListener('change', function() {
+        if (this.value) {
+            const selectedOption = this.options[this.selectedIndex];
+            const patientName = selectedOption.text;
+            
+            patientDetails.innerHTML = `
+                <strong>${patientName}</strong><br>
+                <small class="text-muted">ID: ${this.value}</small>
+            `;
+            patientPreview.style.display = 'block';
+            submitBtn.disabled = false;
+        } else {
+            patientPreview.style.display = 'none';
+            submitBtn.disabled = true;
+        }
+    });
+
+    // Désactiver le bouton submit au départ si aucun patient sélectionné
+    if (!patientSelect.value) {
+        submitBtn.disabled = true;
+    }
+});
+</script>
+
+<style>
+/* Styles personnalisés */
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+#patient-preview {
+    border-left: 4px solid #007bff;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}
