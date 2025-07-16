@@ -14,7 +14,7 @@ class PatientRegistrationForm(UserCreationForm):
     """Registration form for patients"""
     first_name = forms.CharField(
         max_length=30,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'autofocus': True})
     )
     last_name = forms.CharField(
         max_length=30,
@@ -24,7 +24,14 @@ class PatientRegistrationForm(UserCreationForm):
         widget=forms.EmailInput(attrs={'class': 'form-control'})
     )
     date_of_birth = forms.DateField(
-        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+        widget=forms.DateInput(
+            attrs={
+                'class': 'form-control',
+                'type': 'date',
+                'max': date.today().isoformat(),
+                'min': (date.today().replace(year=date.today().year - 120)).isoformat(),
+            }
+        )
     )
     gender = forms.ChoiceField(
         choices=[
@@ -108,7 +115,7 @@ class DoctorRegistrationForm(UserCreationForm):
     """Registration form for doctors"""
     first_name = forms.CharField(
         max_length=30,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'autofocus': True})
     )
     last_name = forms.CharField(
         max_length=30,
@@ -205,16 +212,13 @@ class DoctorRegistrationForm(UserCreationForm):
         return phone
 
 
-
-User = get_user_model()
-
 class AdminRegistrationForm(UserCreationForm):
     """Registration form for administrators"""
     first_name = forms.CharField(
         max_length=30,
         widget=forms.TextInput(attrs={
-            'class': 'form-control'
-            
+            'class': 'form-control',
+            'autofocus': True
         })
     )
     last_name = forms.CharField(
@@ -276,41 +280,33 @@ class AdminRegistrationForm(UserCreationForm):
         if commit:
             user.save()
         return user
-
-
-class AccessRequestForm(forms.ModelForm):
-    patient = forms.ModelChoiceField(
-        queryset=Patient.objects.all(),
-        empty_label="-- Sélectionnez un patient --",
-        widget=forms.Select(attrs={'class': 'form-control'}),
-        label='Patient'
-    )
-    
-    class Meta:
-        model = AccessRequest
-        fields = ['patient', 'reason']
-        widgets = {
-            'reason': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 4,
-                'placeholder': 'Expliquez pourquoi vous avez besoin d\'accéder au dossier...'
-            }),
-        }
-
        
+
 class ConsultationForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['date'].widget.attrs.update({
+            'class': 'form-control datetimepicker-input',
+            'placeholder': 'Select date and time'
+        })
+        for field in ['symptoms', 'diagnosis', 'treatment', 'notes']:
+            self.fields[field].widget.attrs.update({
+                'class': 'form-control modern-textarea',
+                'rows': 3
+            })
+        self.fields['cost'].widget.attrs.update({
+            'class': 'form-control',
+            'min': '0',
+            'step': '0.01',
+            'placeholder': '0.00'
+        })
+
     class Meta:
         model = Consultation
         fields = ['date', 'symptoms', 'diagnosis', 'treatment', 'notes', 'cost']
         widgets = {
-            'date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'symptoms': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'diagnosis': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'treatment': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
-
 
 class PrescriptionForm(forms.Form):
     consultation = forms.ModelChoiceField(
@@ -405,92 +401,92 @@ class ReimbursementForm(forms.ModelForm):
         self.fields['notes'].required = False
 
 
-class ConsultationForm(forms.ModelForm):
-    """Form to create/edit a consultation"""
+# class ConsultationForm(forms.ModelForm):
+#     """Form to create/edit a consultation"""
     
-    class Meta:
-        model = Consultation
-        fields = ['patient', 'date', 'symptoms', 'diagnosis', 'treatment', 'notes', 'cost']
-        widgets = {
-            'patient': forms.Select(attrs={
-                'class': 'form-select',
-                'required': True
-            }),
-            'date': forms.DateTimeInput(attrs={
-                'class': 'form-control',
-                'type': 'datetime-local',
-                'required': True
-            }),
-            'symptoms': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Describe the patient\'s symptoms...',
-                'required': True
-            }),
-            'diagnosis': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Provide the diagnosis...',
-                'required': True
-            }),
-            'treatment': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Prescribe the treatment...',
-                'required': True
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 2,
-                'placeholder': 'Additional notes (optional)...'
-            }),
-            'cost': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'required': True
-            })
-        }
-        labels = {
-            'patient': 'Patient',
-            'date': 'Date and Time',
-            'symptoms': 'Symptoms',
-            'diagnosis': 'Diagnosis', 
-            'treatment': 'Treatment',
-            'notes': 'Additional Notes',
-            'cost': 'Cost (€)'
-        }
+#     class Meta:
+#         model = Consultation
+#         fields = ['patient', 'date', 'symptoms', 'diagnosis', 'treatment', 'notes', 'cost']
+#         widgets = {
+#             'patient': forms.Select(attrs={
+#                 'class': 'form-select',
+#                 'required': True
+#             }),
+#             'date': forms.DateTimeInput(attrs={
+#                 'class': 'form-control',
+#                 'type': 'datetime-local',
+#                 'required': True
+#             }),
+#             'symptoms': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'rows': 3,
+#                 'placeholder': 'Describe the patient\'s symptoms...',
+#                 'required': True
+#             }),
+#             'diagnosis': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'rows': 3,
+#                 'placeholder': 'Provide the diagnosis...',
+#                 'required': True
+#             }),
+#             'treatment': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'rows': 3,
+#                 'placeholder': 'Prescribe the treatment...',
+#                 'required': True
+#             }),
+#             'notes': forms.Textarea(attrs={
+#                 'class': 'form-control',
+#                 'rows': 2,
+#                 'placeholder': 'Additional notes (optional)...'
+#             }),
+#             'cost': forms.NumberInput(attrs={
+#                 'class': 'form-control',
+#                 'step': '0.01',
+#                 'min': '0',
+#                 'required': True
+#             })
+#         }
+#         labels = {
+#             'patient': 'Patient',
+#             'date': 'Date and Time',
+#             'symptoms': 'Symptoms',
+#             'diagnosis': 'Diagnosis', 
+#             'treatment': 'Treatment',
+#             'notes': 'Additional Notes',
+#             'cost': 'Cost (€)'
+#         }
 
-    def __init__(self, *args, **kwargs):
-        doctor = kwargs.pop('doctor', None)
-        super().__init__(*args, **kwargs)
+#     def __init__(self, *args, **kwargs):
+#         doctor = kwargs.pop('doctor', None)
+#         super().__init__(*args, **kwargs)
         
-        if doctor:
-            # Optional: filter patients by doctor if needed
-            # Uncomment and adapt to your business logic
-            # self.fields['patient'].queryset = Patient.objects.filter(doctor=doctor)
-            pass
+#         if doctor:
+#             # Optional: filter patients by doctor if needed
+#             # Uncomment and adapt to your business logic
+#             # self.fields['patient'].queryset = Patient.objects.filter(doctor=doctor)
+#             pass
         
-        # Improve patient display in dropdown
-        self.fields['patient'].queryset = Patient.objects.select_related('user').all()
-        self.fields['patient'].empty_label = "Select a patient..."
+#         # Improve patient display in dropdown
+#         self.fields['patient'].queryset = Patient.objects.select_related('user').all()
+#         self.fields['patient'].empty_label = "Select a patient..."
 
-    def clean_cost(self):
-        """Cost validation"""
-        cost = self.cleaned_data.get('cost')
-        if cost is not None and cost < 0:
-            raise forms.ValidationError("The cost cannot be negative.")
-        return cost
+#     def clean_cost(self):
+#         """Cost validation"""
+#         cost = self.cleaned_data.get('cost')
+#         if cost is not None and cost < 0:
+#             raise forms.ValidationError("The cost cannot be negative.")
+#         return cost
 
-    def clean_date(self):
-        """Date validation"""
-        date = self.cleaned_data.get('date')
-        if date:
-            from django.utils import timezone
-            # Add additional date validations if necessary
-            # For example, prevent very old or future dates
-            pass
-        return date
+#     def clean_date(self):
+#         """Date validation"""
+#         date = self.cleaned_data.get('date')
+#         if date:
+#             from django.utils import timezone
+#             # Add additional date validations if necessary
+#             # For example, prevent very old or future dates
+#             pass
+#         return date
 
 
 class ConsultationFilterForm(forms.Form):
