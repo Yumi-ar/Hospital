@@ -8,6 +8,11 @@ import re
 from .models import *
 
 
+def validate_phone(value):
+    if not re.match(r'^\+?[0-9]{9,15}$', value):
+        raise ValidationError("Numéro de téléphone invalid")
+    return value
+
 User = get_user_model()
 
 class PatientRegistrationForm(UserCreationForm):
@@ -104,11 +109,16 @@ class PatientRegistrationForm(UserCreationForm):
 
     def clean_phone_number(self):
         phone = self.cleaned_data.get('phone_number')
-        if not re.match(r'^\+?[\d\s\-\(\)]+$', phone):
-            raise ValidationError("Invalid phone number format.")
-        if Patient.objects.filter(phone_number=phone).exists():
+        phone = validate_phone(phone)  
+        
+        if Patient.objects.filter(phone_number=phone).exclude(pk=self.instance.pk).exists():
             raise ValidationError("This phone number is already in use.")
+        
         return phone
+
+
+    def clean_emergency_phone(self):
+        return validate_phone(self.cleaned_data.get('emergency_phone'))
 
 
 class DoctorRegistrationForm(UserCreationForm):
