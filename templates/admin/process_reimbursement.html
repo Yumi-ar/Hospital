@@ -4,25 +4,7 @@
 
 {% block content %}
 <style>
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --secondary: #f1f5f9;
-        --success: #10b981;
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --info: #06b6d4;
-        --dark: #1e293b;
-        --light: #f8fafc;
-        --border: #e2e8f0;
-        --text: #334155;
-        --text-light: #64748b;
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        --medical-blue: #3b82f6;
-        --medical-green: #059669;
-    }
-
+    
     .reimbursement-container {
         padding: 2rem;
         font-family: 'Inter', sans-serif;
@@ -74,13 +56,6 @@
 
     .card:hover {
         transform: translateY(-3px);
-    }
-
-    .card-header {
-        background-color: var(--secondary);
-        color: var(--text);
-        padding: 1.25rem;
-        border-bottom: 2px solid var(--border);
     }
 
     .card-header h5,
@@ -424,39 +399,87 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="confirmModalLabel">
+          <i class="fas fa-question-circle me-2"></i>Confirmation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody">
+        <!-- le texte sera injecté -->
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" id="confirmModalBtn" class="btn btn-primary">Confirmer</button>
+      </div>
+    </div>
+  </div>
+</div>
 </div>
 
-<script>
-// Empêcher les conflits de soumission de formulaire
-document.addEventListener('DOMContentLoaded', function() {
-    const approveBtn = document.querySelector('button[value="approve"]');
-    const denyBtn = document.querySelector('button[value="deny"]');
-    
-    approveBtn.addEventListener('click', function(e) {
-        const amount = document.getElementById('amount_approved').value;
-        if (!amount || amount <= 0) {
-            e.preventDefault();
-            alert('Veuillez saisir un montant valide à approuver.');
+ <script>
+    document.addEventListener('DOMContentLoaded', function(){
+
+  
+      const confirmModal     = new bootstrap.Modal(document.getElementById('confirmModal'));
+      const confirmBtn       = document.getElementById('confirmModalBtn');
+      const confirmBody      = document.getElementById('confirmModalBody');
+      let pendingFormSubmit  = null;
+
+
+      function askConfirmation(message, form) {
+        confirmBody.textContent = message;
+        pendingFormSubmit = form;
+        confirmModal.show();
+      }
+
+      
+      confirmBtn.addEventListener('click', function(){
+        if (pendingFormSubmit) {
+          pendingFormSubmit.submit();
+          pendingFormSubmit = null;
+        }
+        confirmModal.hide();
+      });
+
+      // Bouton "Approuver"
+      document.querySelectorAll('button[value="approve"]').forEach(btn => {
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          const form   = btn.closest('form');
+          const amount = parseFloat(document.getElementById('amount_approved').value) || 0;
+          if (amount <= 0) {
+            showModal('Veuillez saisir un montant valide à approuver.', 'warning');
             return;
-        }
-        
-        if (!confirm(`Êtes-vous sûr de vouloir approuver ce remboursement de ${amount} DA ?`)) {
-            e.preventDefault();
-        }
-    });
-    
-    denyBtn.addEventListener('click', function(e) {
- const comments = document.getElementById('admin_comments_deny').value.trim();
-        if (!comments) {
-            e.preventDefault();
-            alert('Veuillez fournir un motif pour le refus.');
+          }
+          askConfirmation(
+            `Êtes-vous sûr de vouloir approuver ce remboursement de ${amount.toFixed(2)} DA ?`,
+            form
+          );
+        });
+      });
+
+      // Bouton "Refuser"
+      document.querySelectorAll('button[value="deny"]').forEach(btn => {
+        btn.addEventListener('click', function(e){
+          e.preventDefault();
+          const form     = btn.closest('form');
+          const comments = document.getElementById('admin_comments_deny').value.trim();
+          if (!comments) {
+            showModal('Veuillez fournir un motif pour le refus.', 'warning');
             return;
-        }
-        
-        if (!confirm('Êtes-vous sûr de vouloir refuser ce remboursement ?')) {
-            e.preventDefault();
-        }
+          }
+          askConfirmation(
+            `Êtes-vous sûr de vouloir refuser ce remboursement ?`,
+            form
+          );
+        });
+      });
+
     });
-});
-</script>
+  </script>
 {% endblock %}
