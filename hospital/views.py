@@ -72,17 +72,14 @@ print(f"Nombre de blocs: [ {len(medical_blockchain.chain)} ]")
 import os
 import uuid
 
-def get_or_create_node_id():
-    if os.path.exists("node_id.txt"):
-        with open("node_id.txt", "r") as f:
-            return f.read().strip()
-    else:
-        node_id = str(uuid.uuid4()).replace("-", "")
-        with open("node_id.txt", "w") as f:
-            f.write(node_id)
-        return node_id
+def get_mac_address():
+    mac = uuid.getnode()
+    mac_hex = f"{mac:012x}"
+    return ":".join(mac_hex[i:i+2] for i in range(0, 12, 2))
 
-NODE_IDENTIFIER = get_or_create_node_id()
+
+NODE_IDENTIFIER = get_mac_address()
+print(f"Adresse MAC---> {NODE_IDENTIFIER}")
 
 
 def customJsonDecoder(jsonDict):
@@ -542,17 +539,36 @@ def patient_dashboard(request):
 @login_required
 def doctor_dashboard(request):
     doctor = request.user.doctor
-    
+
     recent_consultations = Consultation.objects.filter(
         doctor=doctor
     ).order_by('-date')[:5]
-   
+
+    # Récupérer les patients liés aux consultations du médecin
+    patients = Patient.objects.filter(
+        consultations__doctor=doctor
+    ).distinct().order_by('user__first_name')  # ou 'user__username' selon ce que tu veux afficher
+
     context = {
         'doctor': doctor,
         'recent_consultations': recent_consultations,
-       
+        'patients': patients,
     }
     return render(request, 'doctor/dashboard.html', context)
+
+# def doctor_dashboard(request):
+#     doctor = request.user.doctor
+    
+#     recent_consultations = Consultation.objects.filter(
+#         doctor=doctor
+#     ).order_by('-date')[:5]
+   
+#     context = {
+#         'doctor': doctor,
+#         'recent_consultations': recent_consultations,
+       
+#     }
+#     return render(request, 'doctor/dashboard.html', context)
 
 
 @login_required
@@ -1460,7 +1476,7 @@ def create_consultation(request):
     doctor = request.user.doctor
     
     if request.method == 'GET':
-        patients = Patient.objects.all().select_related('user')
+        patients = Patient.objects.select_related('user').filter(user__is_active=True).order_by('-user__created_at')
         return render(request, 'doctor/create_consultation.html', {'patients': patients})
     try:
         # 1. Vérification du wallet
@@ -1549,7 +1565,7 @@ def create_consultation(request):
             return redirect('consultations')
 
         messages.success(request, f"Consultation enregistrée pour {patient.user.get_full_name()}")
-        
+        return redirect('doctor_dashboard')
     except Exception as e:
         logger.exception(f"Error in create_consultation: {e}")
         messages.error(request, f"Erreur système: {str(e)}")
@@ -1669,6 +1685,13 @@ def edit_consultation(request, consultation_id):
             messages.error(request, "Erreur: Portefeuille non trouvé.")
             return redirect('consultations')
 
+        # Charger la clé privée
+        wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+        if not wallet_with_private:
+            logger.error(f"Aucune clé privée pour le médecin {doctor.id}")
+            messages.error(request, "Erreur système: Clé de sécurité manquante")
+            return redirect('consultations')
+
         # Préparer les données blockchain
         if request.method == 'POST':
             # Mettre à jour les champs
@@ -1699,31 +1722,41 @@ def edit_consultation(request, consultation_id):
 
             # Données de transaction
             transaction_data = {
-                'action': 'edit_consultation',
+                'action': 'Edit Consultation',
                 'consultation_id': consultation.id,
                 'patient_identity': consultation.patient.user.identity,  
                 'doctor_identity': doctor.user.identity, 
                 'hash': consultation_hash,
-                'description': f'Modification consultation par Dr. {doctor.user.get_full_name()}'
             }
 
-            success = medical_blockchain.add_transaction(
-                sender=doctor.user.identity, 
+            # Créer la transaction blockchain
+            blockchain_transaction = Transaction(
+                sender=wallet_with_private,
                 recipient=consultation.patient.user.identity,
                 data=transaction_data
             )
 
-            if not success:
-                logger.error(f"Échec ajout transaction blockchain pour edit {consultation.id}")
-                messages.error(request, "Erreur blockchain.")
+            if not blockchain_transaction.sign_transaction():
+                logger.error(f"Échec de signature pour consultation {consultation.id}")
                 return redirect('consultations')
 
+            # Ajouter à la blockchain
+            if not medical_blockchain.add_transaction(
+                sender=wallet_with_private, 
+                recipient=consultation.patient.user.identity, 
+                data=blockchain_transaction.data
+            ):
+                logger.error(f"Échec d'ajout transaction pour consultation {consultation.id}")
+                messages.error(request, "Erreur d'enregistrement blockchain")
+                return redirect('consultations')
+
+            # Miner la transaction
             medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
 
             consultation.blockchain_hash = consultation_hash
             consultation.save()
 
-            messages.success(request, "Consultation mise à jour et enregistrée sur la blockchain.")
+            messages.success(request, "Consultation mise à jour.")
             return redirect('consultations')
 
         # Requête GET AJAX
@@ -1758,50 +1791,68 @@ def delete_consultation(request, consultation_id):
                 doctor=doctor
             )
 
+            # 1. Charger le portefeuille du médecin
             wallet_obj = Wallet.load_wallet(request.user)
             if not wallet_obj:
                 messages.error(request, "Erreur système: Portefeuille introuvable")
                 return redirect('consultations')
 
+            # 2. Charger la clé privée
+            wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+            if not wallet_with_private:
+                logger.error(f"Aucune clé privée pour le médecin {doctor.id}")
+                messages.error(request, "Erreur système: Clé de sécurité manquante")
+                return redirect('consultations')
+
             patient_name = consultation.patient.user.get_full_name()
 
-            # Préparation des données de la transaction
+            # 3. Préparation des données de la transaction
             transaction_data = {
-                'action': 'Delete Consultation',
-                'consultation': consultation.id,  
-                'patient': consultation.patient.user.identity, 
-                'doctor': doctor.user.identity, 
-                'details': f'Consultation deleted for {patient_name}'
+                'action': 'delete_consultation',
+                'consultation_id': consultation.id,
+                'patient_identity': consultation.patient.user.identity,
+                'doctor_identity': doctor.user.identity,
+                'details': f'Consultation supprimée pour {patient_name}'
             }
 
+            # 4. Créer la transaction blockchain
             blockchain_transaction = Transaction(
-                sender=wallet_obj,
+                sender=wallet_with_private,
                 recipient=consultation.patient.user.identity,
                 data=transaction_data
             )
+
+            # 5. Signature
             if not blockchain_transaction.sign_transaction():
-                logger.error(f"Échec de la signature de la transaction pour la suppression de la consultation: {consultation.id}")
+                logger.error(f"Échec de signature pour consultation {consultation.id}")
                 return redirect('consultations')
 
-            if not medical_blockchain.add_transaction(blockchain_transaction):
-                logger.error(f"Échec de l'ajout de la transaction pour la suppression de la consultation: {consultation.id}")
-                messages.error(request, "Erreur: Impossible d'enregistrer la transaction dans la blockchain.")
+            # 6. Ajout à la blockchain (avec les arguments requis)
+            if not medical_blockchain.add_transaction(
+                sender=wallet_with_private, 
+                recipient=consultation.patient.user.identity, 
+                data=blockchain_transaction.data
+            ):
+                logger.error(f"Échec d'ajout transaction pour consultation {consultation.id}")
+                messages.error(request, "Erreur d'enregistrement blockchain")
                 return redirect('consultations')
 
+      
             block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
             if not block:
-                logger.error(f"Échec du minage du bloc pour la suppression de la consultation: {consultation.id}")
-                messages.error(request, "Erreur: Impossible de miner le bloc.")
+                logger.error(f"Échec minage bloc pour consultation {consultation.id}")
+                messages.error(request, "Erreur minage blockchain")
                 return redirect('consultations')
 
+        
             consultation.delete()
 
-            logger.info(f"Consultation {consultation.id} supprimée et enregistrée dans la blockchain (ID de transaction: {blockchain_transaction.transaction_id})")
-            messages.success(request, f"Consultation de {patient_name} supprimée avec succès.")
+            messages.success(request, f"Consultation supprimée avec succès")
+            logger.info(f"Consultation {consultation.id} supprimée. Transaction: {blockchain_transaction.transaction_id}")
 
         except Exception as e:
-            logger.exception(f"Erreur dans delete_consultation pour ID {consultation_id}: {e}")
-            messages.error(request, f"Erreur lors de la suppression: {str(e)}")
+            logger.exception(f"Erreur suppression consultation {consultation_id}: {e}")
+            messages.error(request, f"Erreur: {str(e)}")
 
     return redirect('consultations')
 
@@ -1924,9 +1975,10 @@ def create_prescription(request, patient_id):
 @login_required
 def admin_dashboard(request):
     # Compteurs globaux
-    total_patients = Patient.objects.count()
-    total_doctors = Doctor.objects.count()
-    total_users = User.objects.filter(is_active=True).count()  # 🔁 Seuls les utilisateurs actifs
+    total_patients = Patient.objects.select_related('user').filter(user__is_active=True).count() 
+    
+    total_doctors = Doctor.objects.select_related('user').filter(user__is_active=True).count() 
+    total_users = User.objects.filter(is_active=True).count()  
     pending_verifications = User.objects.filter(is_verified=False, is_active=True).count()
     
     # Pagination pour les utilisateurs - 🔁 uniquement actifs
@@ -2948,6 +3000,13 @@ def delete_analysis(request, analysis_id):
         messages.error(request, "Erreur: Portefeuille médecin non trouvé.")
         return redirect('analysis_list', patient_id=analysis.patient.id)
 
+    # Charger la clé privée
+    wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+    if not wallet_with_private:
+        logger.error(f"Aucune clé privée pour le médecin {doctor.id}")
+        messages.error(request, "Erreur système: Clé de sécurité manquante")
+        return redirect('analysis_list', patient_id=analysis.patient.id)
+
     if request.method == 'POST':
         try:
             with transaction.atomic():
@@ -2958,17 +3017,16 @@ def delete_analysis(request, analysis_id):
                 transaction_data = {
                     'action': 'Delete Analysis',
                     'analysis_id': analysis.id,
-                    'patient': patient_identity, 
-                    'doctor': wallet_obj.identity, 
+                    'patient_identity': patient_identity, 
+                    'doctor_identity': doctor.user.identity, 
                     'title': analysis_title,
-                    'details': f'Analyse supprimée: {analysis_title}'
                 }
 
                 # Hachage des données de la transaction
                 data_hash = hashlib.sha256(json.dumps(transaction_data, sort_keys=True).encode()).hexdigest()
 
                 blockchain_transaction = Transaction(
-                    sender=wallet_obj,
+                    sender=wallet_with_private,
                     recipient=analysis.patient.user.identity,
                     data={
                         'transaction_data': transaction_data,
@@ -2980,11 +3038,16 @@ def delete_analysis(request, analysis_id):
                     logger.error(f"Échec de la signature de la transaction pour la suppression de l'analyse {analysis.id}")
                     raise Exception(f"Échec de la signature de la transaction pour la suppression de l'analyse {analysis.id}")
 
-                if not medical_blockchain.add_transaction(blockchain_transaction):
+                # 3. Ajouter la transaction à la blockchain
+                if not medical_blockchain.add_transaction(
+                    sender=blockchain_transaction.sender, 
+                    recipient=blockchain_transaction.recipient,
+                    data=blockchain_transaction.data
+                ):
                     logger.error(f"Échec de l'ajout de la transaction pour la suppression de l'analyse {analysis.id}")
                     raise Exception(f"Échec de l'ajout de la transaction pour la suppression de l'analyse {analysis.id}")
 
-
+                # 4. Miner la transaction
                 block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
               
                 if not block:
@@ -3668,7 +3731,7 @@ def delete_radio(request, radio_id):
         messages.error(request, "Seuls les examens en attente peuvent être supprimés")
         return redirect('radio_list', patient_id=patient.id)
 
-    # 1. Chargement wallet (identique aux autres vues)
+    # 1. Chargement wallet
     wallet_obj = Wallet.load_wallet(request.user)
     if not wallet_obj:
         messages.error(request, "Erreur système: Portefeuille introuvable")
@@ -3682,36 +3745,44 @@ def delete_radio(request, radio_id):
 
     if request.method == 'POST':
         try:
-            # 3. Préparation données avant suppression (hachage comme create_prescription)
+            # 3. Préparation des données avant suppression
             radio_data = {
                 'radio_id': radio.id,
-                'exam_type': hashlib.sha256(radio.exam_type.encode()).hexdigest(),
-                'body_part': hashlib.sha256(radio.body_part.encode()).hexdigest(),
+                'exam_type': radio.exam_type,
+                'body_part': radio.body_part,
                 'timestamp': str(timezone.now())
             }
 
-            # 4. Transaction blockchain (même pattern que create_consultation)
-            tx = Transaction(
+            # 4. Créer la transaction blockchain
+            transaction_data = {
+                'action': 'delete_radio',
+                'radio_data': radio_data,
+                'patient_identity': patient.user.identity,
+                'doctor_identity': request.user.doctor.user.identity,
+            }
+
+            blockchain_transaction = Transaction(
                 sender=wallet_with_private,
                 recipient=patient.user.identity,
-                data={
-                    'action': 'delete_radio',
-                    'radio_data': radio_data,
-                    'data_hash': hashlib.sha256(json.dumps(radio_data).encode()).hexdigest()
-                }
+                data=transaction_data
             )
 
-            if not tx.sign_transaction():
-                messages.error(request, "Échec signature sécurisée")
+            if not blockchain_transaction.sign_transaction():
+                messages.error(request, "Échec de la signature sécurisée")
                 return redirect('radio_list', patient_id=patient.id)
 
-            # 5. Processus blockchain complet avant suppression
-            if not medical_blockchain.add_transaction(tx.sender, tx.recipient, tx.data):
-                messages.error(request, "Échec enregistrement blockchain")
+            # 5. Ajouter la transaction à la blockchain
+            if not medical_blockchain.add_transaction(
+                sender=blockchain_transaction.sender,
+                recipient=blockchain_transaction.recipient,
+                data=blockchain_transaction.data
+            ):
+                messages.error(request, "Échec de l'enregistrement dans la blockchain")
                 return redirect('radio_list', patient_id=patient.id)
 
+            # 6. Miner la transaction
             if not medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER):
-                messages.error(request, "Échec validation blockchain")
+                messages.error(request, "Échec de la validation blockchain")
                 return redirect('radio_list', patient_id=patient.id)
 
             # Suppression seulement après confirmation blockchain
@@ -4063,6 +4134,11 @@ def generate_prescriptionradio_pdf(request, radio_id):
             messages.error(request, "Erreur: Portefeuille non trouvé.")
             return redirect('radio_list', patient_id=patient.id)
 
+        wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+        if not wallet_with_private:
+            messages.error(request, "Erreur système: Clé de sécurité manquante") 
+            return redirect('radio_list', patient_id=patient.id)
+
         # Initialize IPFS
         ipfs_manager = IPFSManager()
 
@@ -4227,7 +4303,9 @@ def generate_prescriptionradio_pdf(request, radio_id):
                 'patient_id': patient.id,
                 'doctor_id': doctor.id
             }
-            signature = wallet_obj.sign_data(json.dumps(prescription_data, sort_keys=True))
+            signature = blockchain_transaction.sign_transaction()
+            if not signature:
+                            messages.error(request, "Échec de la signature sécurisée")
 
             # Create blockchain transaction
             transaction_data = {
@@ -4250,18 +4328,16 @@ def generate_prescriptionradio_pdf(request, radio_id):
                 data=transaction_data
             )
 
-            if blockchain_transaction.sign_transaction():
-                if medical_blockchain.add_transaction(blockchain_transaction):
-                    block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                    if block:
-                        logger.info(f"Blockchain transaction successful: {blockchain_transaction.transaction_id}")
-                    else:
-                        logger.error("Failed to mine block")
+            
+            if medical_blockchain.add_transaction(blockchain_transaction):
+                block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
+                if block:
+                    logger.info(f"Blockchain transaction successful: {blockchain_transaction.transaction_id}")
                 else:
-                    logger.error("Failed to add transaction to blockchain")
+                    logger.error("Failed to mine block")
             else:
-                logger.error("Failed to sign blockchain transaction")
-
+                logger.error("Failed to add transaction to blockchain")
+            
         response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
