@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestion des Utilisateurs{% endblock %}
+
+{% block content %}
+<style>
+    
+.section-header {
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, var(--primary), var(--medical-blue));
+    color: white;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+.form-label {
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.reimbursement-header {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.reimbursement-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 0;
+}
+</style>
+
+
+<div class="container-fluid px-4">
+    {% if messages %}
+    <div class="my-3" id="django-messages">
+        {% for message in messages %}
+        <div class="alert 
+            {% if message.tags == 'success' %}alert-success
+            {% elif message.tags == 'error' %}alert-danger
+            {% elif message.tags == 'warning' %}alert-warning
+            {% else %}alert-info{% endif %} 
+            alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="reimbursement-header">
+        <h1>
+            <i class="fas fa-users-cog me-2"></i>Gestion des Utilisateurs
+        </h1>
+    </div>
+   
+
+    <!-- Filtres -->
+    <div class="card shadow mb-4">
+        <div class="section-header">
+            <h3 class="section-title">Filtres</h3>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="type" class="form-label">Type d'utilisateur</label>
+                    <select name="type" class="form-select">
+                        <option value="">Tous les types</option>
+                        {% for value, label in user_types %}
+                            <option value="{{ value }}" {% if current_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="verified" class="form-label">Statut</label>
+                    <select name="verified" class="form-select">
+                        <option value="">Tous les statuts</option>
+                        <option value="true" {% if current_verified == 'true' %}selected{% endif %}>Vérifié</option>
+                        <option value="false" {% if current_verified == 'false' %}selected{% endif %}>En attente</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                  
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filtrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tableau des utilisateurs -->
+    <div class="card shadow">
+        <div class="section-header">
+            <h6 class="section-title">
+                <i class="fas fa-table me-2"></i>Liste des Utilisateurs
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Identifiant</th>
+                                <th>Nom Complet</th>
+                                <th>Type</th>
+                                <th>Email</th>
+                                <th>Statut</th>
+                                <th>Date de Création</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in page_obj %}
+                            <tr>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.get_full_name }}</td>
+                                <td>
+                                    <span class="badge rounded-pill bg-{% if user.user_type == 'patient' %}primary{% elif user.user_type == 'doctor' %}success{% else %}warning{% endif %}">
+                                        {{ user.get_user_type_display }}
+                                    </span>
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.is_verified %}
+                                        <span class="badge bg-success rounded-pill">
+                                            <i class="fas fa-check-circle me-1"></i>Vérifié
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning rounded-pill">
+                                            <i class="fas fa-clock me-1"></i>En attente
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.created_at|date:"d/m/Y" }}</td>
+                                <td class="text-nowrap">
+                                    {% if not user.is_verified %}
+                                    <form method="post" action="{% url 'verify_user' user.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" name="action" value="verify" class="btn btn-sm btn-success" title="Vérifier cet utilisateur">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    {% if user.is_active %}
+                                    <form method="post" action="{% url 'verify_user' user.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" name="action" value="suspend" class="btn btn-sm btn-warning" title="Suspendre cet utilisateur">
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                 
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Navigation des pages">
+                        <ul class="pagination justify-content-center mt-4">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_verified %}&verified={{ current_verified }}{% endif %}">
+                                        <i class="fas fa-chevron-left"></i> Précédent
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_verified %}&verified={{ current_verified }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_type %}&type={{ current_type }}{% endif %}{% if current_verified %}&verified={{ current_verified }}{% endif %}">
+                                        Suivant <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="fas fa-info-circle me-2"></i>Aucun utilisateur trouvé avec ces critères.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    
+
+</div>
+
+
+
+<script>
+  // Cacher les messages automatiquement après 5 secondes
+  setTimeout(() => {
+    const messagesDiv = document.getElementById("django-messages");
+    if (messagesDiv) {
+      messagesDiv.style.transition = "opacity 1s ease";
+      messagesDiv.style.opacity = 0;
+      setTimeout(() => messagesDiv.remove(), 1000);  // retirer après fondu
+    }
+  }, 5000);
+</script>
+
+
+{% endblock %}
