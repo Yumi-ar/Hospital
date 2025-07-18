@@ -875,7 +875,7 @@ def reimbursement_detail(request, reimbursement_id):
         except AttributeError:
             logger.error(f"User {request.user.id} does not have a patient profile")
             messages.error(request, "Accès non autorisé.")
-            return redirect('dashboard')
+            return redirect('patient_dashboard')
 
         # Récupérer le remboursement correspondant au patient
         reimbursement = get_object_or_404(Reimbursement, id=reimbursement_id, patient=patient)
@@ -888,7 +888,7 @@ def reimbursement_detail(request, reimbursement_id):
     except Exception as e:
         logger.exception(f"Erreur dans reimbursement_detail pour remboursement_id {reimbursement_id} : {e}")
         messages.error(request, f"Erreur interne : {str(e)}")
-        return redirect('dashboard')
+        return redirect('patient_dashboard')
 
 
 
@@ -900,7 +900,7 @@ def cancel_reimbursement(request, reimbursement_id):
             # Vérifier que l'utilisateur est un patient
             if not hasattr(request.user, 'patient'):
                 messages.error(request, "Accès non autorisé. Seuls les patients peuvent annuler des remboursements.")
-                return redirect('dashboard')
+                return redirect('patient_dashboard')
             
             patient = request.user.patient
             reimbursement = get_object_or_404(
@@ -2174,130 +2174,134 @@ def admin_reimbursements(request):
 @login_required
 def process_reimbursement(request, reimbursement_id):
     """Admin processes a specific reimbursement request"""
-    if not request.user.user_type == 'admin':
+    # 1) Vérifier que c'est bien un admin
+    if request.user.user_type != 'admin':
         messages.error(request, "Accès réservé aux administrateurs.")
-        return redirect('dashboard')
-    
+        return redirect('login')
+
     reimbursement = get_object_or_404(Reimbursement, id=reimbursement_id)
-    
+
     if request.method == 'POST':
         action = request.POST.get('action')
-        admin_comments = request.POST.get('admin_comments', '')
-        
-        # Charger le portefeuille de l'administrateur
+        admin_comments = request.POST.get('admin_comments', '').strip()
+
+        # Charger le portefeuille de l'admin et sa clé privée
         admin_wallet_obj = Wallet.load_wallet(request.user)
         if not admin_wallet_obj:
-            logger.error(f"Aucun portefeuille trouvé pour l'utilisateur admin {request.user.id}")
-            messages.error(request, "Erreur: Portefeuille administrateur non trouvé.")
-            return redirect('admin_reimbursements')
-        
-       
-        wallet_with_private = load_private_key(admin_wallet_obj.public_key_pem, request.user.user_type)
-        if not wallet_with_private:
-            logger.error(f"Clés du portefeuille invalides pour l'utilisateur {request.user.id}")
-            messages.error(request, "Erreur : Clés du portefeuille invalides.")
-            return redirect('admin_reimbursements')
+            messages.error(request, "Portefeuille administrateur non trouvé.")
+            return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
+        private_key = load_private_key(
+            admin_wallet_obj.public_key_pem,
+            request.user.user_type
+        )
+        if not private_key:
+            messages.error(request, "Clé privée du portefeuille introuvable.")
+            return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
         try:
-            with transaction.atomic():  
+            with transaction.atomic():
                 if action == 'approve':
-                    amount_approved = request.POST.get('amount_approved')
+                    # --- APPROVAL ---
+                    raw_amount = request.POST.get('amount_approved', '')
                     try:
-                        amount_approved = float(amount_approved)
-                        reimbursement.status = 'approved'
-                        reimbursement.amount_approved = amount_approved
-                        reimbursement.notes = admin_comments  # Utiliser le champ notes au lieu de admin_comments
-                        reimbursement.processed_by = request.user
-                        reimbursement.processed_at = timezone.now()
-                        reimbursement.save()
-                        
-                        # Créer la transaction blockchain pour l'approbation
-                        transaction_data = {
-                            'action': 'Approve reimb',  # Abrégé
-                            'reimb_id': reimbursement.id,
-                            'patient_identity': reimbursement.patient.user.identity, 
-                            'amount': amount_approved,
-                            'admin_identity': request.user.identity,  
-                            'timestamp': timezone.now().isoformat(),  # Format ISO
-                            'comments': admin_comments[:100] if admin_comments else '',  # Limiter la longueur
-                            'details': f'Approved: {amount_approved}DA'  # Abrégé
-                        }
-                        
-                        blockchain_transaction = Transaction(
-                            sender=wallet_with_private,
-                            recipient="System",
-                            data=transaction_data
-                        )
-                        
-                        if not blockchain_transaction.sign_transaction():
-                            logger.error(f"Échec de la signature de la transaction pour l'approbation du remboursement {reimbursement.id}")
-                            raise Exception(f"Échec de la signature de la transaction pour l'approbation du remboursement {reimbursement.id}")
-
-                        if not medical_blockchain.add_transaction(blockchain_transaction):
-                            logger.error(f"Échec de l'ajout de la transaction pour l'approbation du remboursement {reimbursement.id}")
-                            raise Exception(f"Échec de l'ajout de la transaction pour l'approbation du remboursement {reimbursement.id}")
-
-                        # Miner les transactions en attente
-                
-                        block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                        if not block:
-                            logger.error(f"Échec du minage du bloc pour l'approbation du remboursement {reimbursement.id}")
-                            raise Exception("Échec du minage du bloc")
-                        
-                        logger.info(f"Remboursement {reimbursement.id} approuvé et enregistré dans la blockchain (ID de transaction: {blockchain_transaction.transaction_id})")
-                        messages.success(request, f'Remboursement approuvé pour {amount_approved}DA.')
-                        
+                        amount_approved = float(raw_amount)
                     except ValueError:
-                        messages.error(request, 'Montant approuvé invalide.')
-                        return redirect('admin_reimbursements')
-                    
-                elif action == 'deny':
-                    reimbursement.status = 'rejected' 
-                    reimbursement.notes = admin_comments  
+                        messages.error(request, "Montant approuvé invalide.")
+                        raise
+
+                    # validations métier
+                    if amount_approved <= 0:
+                        messages.error(request, "Le montant doit être strictement positif.")
+                        return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
+                    if amount_approved > reimbursement.amount_requested:
+                        messages.error(request, "Le montant approuvé ne peut pas dépasser le montant demandé.")
+                        return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
+                    # tout est OK → on met à jour le modèle
+                    reimbursement.status = 'approved'
+                    reimbursement.amount_approved = amount_approved
+                    reimbursement.notes = admin_comments
                     reimbursement.processed_by = request.user
                     reimbursement.processed_at = timezone.now()
                     reimbursement.save()
-                    
-                    transaction_data = {
-                        'action': 'Reject reimb',  
-                        'reimb_id': reimbursement.id,
-                        'patient_identity': reimbursement.patient.user.identity,  
-                        'admin_identity': request.user.identity,  
-                        'timestamp': timezone.now().isoformat(), 
-                        'comments': admin_comments[:100] if admin_comments else '',
-                        'details': f'Rejected for patient {reimbursement.patient.user.identity}'  # Abrégé
-                    }
-                    
-                    blockchain_transaction = Transaction(
-                        sender=admin_wallet_obj,
-                        recipient="System",
-                        data=transaction_data
+
+                    # préparer et signer la transaction blockchain
+                    tx = Transaction(
+                        sender=private_key,
+                        recipient=reimbursement.patient.user.identity,
+                        data={
+                            'action': 'Approve Reimbursement',
+                            'reimb_id': reimbursement.id,
+                            'amount': amount_approved,
+                            'comments': admin_comments[:100],
+                        }
                     )
-                    
-                    if not blockchain_transaction.sign_transaction():
-                        logger.error(f"Échec de la signature de la transaction pour le refus du remboursement {reimbursement.id}")
-                        raise Exception(f"Échec de la signature de la transaction pour le refus du remboursement {reimbursement.id}")
+                    signature = tx.sign_transaction()
+                    if not signature:
+                        raise Exception("Échec de la signature blockchain.")
 
-                    if not medical_blockchain.add_transaction(blockchain_transaction):
-                        logger.error(f"Échec de l'ajout de la transaction pour le refus du remboursement {reimbursement.id}")
-                        raise Exception(f"Échec de l'ajout de la transaction pour le refus du remboursement {reimbursement.id}")
+                    if not medical_blockchain.add_transaction(
+                        sender=private_key,
+                        recipient=reimbursement.patient.user.identity,
+                        data=tx.data
+                    ):
+                        raise Exception("Échec de l'ajout de la transaction blockchain.")
 
-                    # Miner les transactions en attente
-                    block =medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                    if not block:
-                        logger.error(f"Échec du minage du bloc pour le refus du remboursement {reimbursement.id}")
-                        raise Exception("Échec du minage du bloc")
-                    
-                    logger.info(f"Remboursement {reimbursement.id} rejeté et enregistré dans la blockchain (ID de transaction: {blockchain_transaction.transaction_id})")
-                    messages.success(request, 'Remboursement rejeté.')
-                
-                return redirect('admin_reimbursements')
-        
+                    if not medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER):
+                        raise Exception("Échec du minage du bloc.")
+
+                    messages.success(request, f"Remboursement #{reimbursement.id} approuvé pour {amount_approved:.2f} DA.")
+                    return redirect('admin_reimbursements')
+
+                elif action == 'deny':
+                    # --- DENIAL ---
+                    if not admin_comments:
+                        messages.error(request, "Veuillez fournir un motif pour le refus.")
+                        return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
+                    reimbursement.status = 'rejected'
+                    reimbursement.notes = admin_comments
+                    reimbursement.processed_by = request.user
+                    reimbursement.processed_at = timezone.now()
+                    reimbursement.save()
+
+                    tx = Transaction(
+                        sender=private_key,
+                        recipient=reimbursement.patient.user.identity,
+                        data={
+                            'action': 'Reject Reimbursement',
+                            'reimb_id': reimbursement.id,
+                            'comments': admin_comments[:100],
+                        }
+                    )
+                    if not tx.sign_transaction():
+                        raise Exception("Échec de la signature blockchain.")
+
+                    if not medical_blockchain.add_transaction(
+                        sender=private_key,
+                        recipient=reimbursement.patient.user.identity,
+                        data=tx.data
+                    ):
+                        raise Exception("Échec de l'ajout de la transaction blockchain.")
+
+                    if not medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER):
+                        raise Exception("Échec du minage du bloc.")
+
+                    messages.success(request, f"Remboursement #{reimbursement.id} rejeté.")
+                    return redirect('admin_reimbursements')
+
+                else:
+                    messages.error(request, "Action invalide.")
+                    return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
         except Exception as e:
-            logger.exception(f"Erreur lors du traitement du remboursement {reimbursement_id}: {e}")
-            messages.error(request, f'Erreur interne lors du traitement du remboursement: {str(e)}')
-            return redirect('admin_reimbursements')
-    
+            # En cas d'exception sur la transaction ou la blockchain, on retombe ici
+            messages.error(request, f"Erreur interne : {e}")
+            return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
+    # GET → affichage du formulaire
     return render(request, 'admin/process_reimbursement.html', {
         'reimbursement': reimbursement
     })
