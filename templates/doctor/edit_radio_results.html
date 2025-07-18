@@ -1,0 +1,389 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Modifier Résultats Radiologiques{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/forms.css' %}" rel="stylesheet">
+<style>
+    .exam-info-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+    }
+    .quick-actions {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .status-badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+    .history-section {
+        background-color: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1rem;
+        margin: 1rem 0;
+        border-radius: 0 8px 8px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Informations de l'examen -->
+            <div class="card exam-info-card mb-4">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4><i class="fas fa-x-ray me-2"></i>{{ radio.get_exam_type_display }} - {{ radio.get_body_part_display }}</h4>
+                            <p class="mb-2">
+                                <strong>Patient:</strong> {{ patient.user.get_full_name }} |
+                                <strong>Âge:</strong> {{ patient.age }} ans |
+                                <strong>Prescrit le:</strong> {{ radio.ordered_date|date:"d/m/Y" }}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Indication:</strong> {{ radio.clinical_indication }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge status-badge {% if radio.status == 'completed' %}bg-success{% elif radio.status == 'in_progress' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                {{ radio.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="quick-actions">
+                <h6><i class="fas fa-bolt me-2"></i>Actions rapides</h6>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="setQuickStatus('in_progress')">
+                        <i class="fas fa-play me-1"></i>En cours
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="setQuickStatus('completed')">
+                        <i class="fas fa-check me-1"></i>Terminé
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="addQuickNote('RAS')">
+                        <i class="fas fa-plus me-1"></i>RAS
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="addQuickNote('À revoir')">
+                        <i class="fas fa-eye me-1"></i>À revoir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Historique des résultats existants -->
+            {% if radio.description or radio.impression or radio.recommendations %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Résultats existants</h5>
+                </div>
+                <div class="card-body">
+                    {% if radio.description %}
+                    <div class="history-section">
+                        <h6><i class="fas fa-file-medical me-2"></i>Description</h6>
+                        <div class="border p-3 bg-white rounded">
+                            {{ radio.description|linebreaksbr }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if radio.impression %}
+                    <div class="history-section">
+                        <h6><i class="fas fa-lightbulb me-2"></i>Impression</h6>
+                        <div class="border p-3 bg-white rounded">
+                            {{ radio.impression|linebreaksbr }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if radio.recommendations %}
+                    <div class="history-section">
+                        <h6><i class="fas fa-clipboard-list me-2"></i>Recommandations</h6>
+                        <div class="border p-3 bg-white rounded">
+                            {{ radio.recommendations|linebreaksbr }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Formulaire de mise à jour -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Ajouter/Modifier les résultats
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">
+                                        <strong><i class="fas fa-flag me-1"></i>Statut</strong>
+                                    </label>
+                                    <select name="status" id="status" class="form-select">
+                                        <option value="pending" {% if radio.status == 'pending' %}selected{% endif %}>En attente</option>
+                                        <option value="in_progress" {% if radio.status == 'in_progress' %}selected{% endif %}>En cours</option>
+                                        <option value="completed" {% if radio.status == 'completed' %}selected{% endif %}>Terminé</option>
+                                        <option value="cancelled" {% if radio.status == 'cancelled' %}selected{% endif %}>Annulé</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="performed_date" class="form-label">
+                                        <strong><i class="fas fa-calendar me-1"></i>Date de réalisation</strong>
+                                    </label>
+                                    <input type="date" name="performed_date" id="performed_date" class="form-control" 
+                                           value="{% if radio.performed_date %}{{ radio.performed_date|date:'Y-m-d' }}{% endif %}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="results" class="form-label">
+                                <strong><i class="fas fa-stethoscope me-1"></i>Nouveaux résultats/Observations</strong>
+                            </label>
+                            <textarea name="results" id="results" class="form-control" rows="4" 
+                                      placeholder="Saisir les nouveaux résultats ou observations..."></textarea>
+                            <div class="form-text">Ces résultats seront ajoutés à la description existante avec la date et l'heure.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">
+                                <strong><i class="fas fa-sticky-note me-1"></i>Notes rapides</strong>
+                            </label>
+                            <textarea name="notes" id="notes" class="form-control" rows="3" 
+                                      placeholder="Ajouter des notes rapides..."></textarea>
+                            <div class="form-text">Notes internes qui seront ajoutées avec horodatage.</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="impression" class="form-label">
+                                        <strong><i class="fas fa-lightbulb me-1"></i>Impression diagnostique</strong>
+                                    </label>
+                                    <textarea name="impression" id="impression" class="form-control" rows="3" 
+                                              placeholder="Impression ou diagnostic...">{{ radio.impression }}</textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="recommendations" class="form-label">
+                                        <strong><i class="fas fa-clipboard-list me-1"></i>Recommandations</strong>
+                                    </label>
+                                    <textarea name="recommendations" id="recommendations" class="form-control" rows="3" 
+                                              placeholder="Recommandations ou suivi...">{{ radio.recommendations }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Boutons d'action -->
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a href="{% url 'radio_list' patient.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Retour à la liste
+                            </a>
+                            
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Sauvegarder
+                                </button>
+                                <button type="submit" name="save_and_pdf" class="btn btn-success">
+                                    <i class="fas fa-file-pdf me-2"></i>Sauvegarder et PDF
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation pour le PDF -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfModalLabel">
+                    <i class="fas fa-file-pdf me-2"></i>Générer le rapport PDF
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Le rapport radiologique sera généré en PDF et ajouté au dossier du patient.</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Le PDF contiendra :</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Informations du patient</li>
+                        <li>Détails de l'examen</li>
+                        <li>Tous les résultats et observations</li>
+                        <li>Impression diagnostique</li>
+                        <li>Recommandations</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="confirmPdf">
+                    <i class="fas fa-download me-2"></i>Générer et Télécharger
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Fonctions pour les actions rapides
+    function setQuickStatus(status) {
+        document.getElementById('status').value = status;
+        
+        // Ajouter la date actuelle si le statut est "en cours" ou "terminé"
+        if (status === 'in_progress' || status === 'completed') {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('performed_date').value = today;
+        }
+        
+        // Ajouter une note automatique
+        const statusTexts = {
+            'in_progress': 'Examen en cours de réalisation',
+            'completed': 'Examen terminé',
+            'cancelled': 'Examen annulé'
+        };
+        
+        if (statusTexts[status]) {
+            addQuickNote(statusTexts[status]);
+        }
+    }
+
+    function addQuickNote(note) {
+        const notesField = document.getElementById('notes');
+        const currentNotes = notesField.value.trim();
+        
+        if (currentNotes) {
+            notesField.value = currentNotes + '\n' + note;
+        } else {
+            notesField.value = note;
+        }
+        
+        // Animer le champ pour attirer l'attention
+        notesField.classList.add('border-primary');
+        setTimeout(() => {
+            notesField.classList.remove('border-primary');
+        }, 2000);
+    }
+
+    // Validation du formulaire
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    // Gestion du modal PDF
+    document.addEventListener('DOMContentLoaded', function() {
+        const saveAndPdfBtn = document.querySelector('button[name="save_and_pdf"]');
+        const modal = new bootstrap.Modal(document.getElementById('pdfModal'));
+        const form = document.querySelector('form');
+        
+        if (saveAndPdfBtn) {
+            saveAndPdfBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                modal.show();
+            });
+        }
+        
+        document.getElementById('confirmPdf').addEventListener('click', function() {
+            // Ajouter le champ save_and_pdf au formulaire
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'save_and_pdf';
+            hiddenInput.value = '1';
+            form.appendChild(hiddenInput);
+            
+            modal.hide();
+            form.submit();
+        });
+    });
+
+    // Auto-resize des textareas
+    document.addEventListener('DOMContentLoaded', function() {
+        const textareas = document.querySelectorAll('textarea');
+        textareas.forEach(textarea => {
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+            });
+        });
+    });
+
+    // Raccourcis clavier
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+S pour sauvegarder
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            document.querySelector('button[type="submit"]').click();
+        }
+        
+        // Ctrl+P pour sauvegarder et PDF
+        if (e.ctrlKey && e.key === 'p') {
+            e.preventDefault();
+            document.querySelector('button[name="save_and_pdf"]').click();
+        }
+    });
+
+    // Notification de sauvegarde automatique
+    let autoSaveTimeout;
+    const formFields = document.querySelectorAll('input, textarea, select');
+    
+    formFields.forEach(field => {
+        field.addEventListener('input', function() {
+            clearTimeout(autoSaveTimeout);
+            showAutoSaveIndicator();
+        });
+    });
+
+    function showAutoSaveIndicator() {
+        // Afficher un indicateur visuel que les modifications ne sont pas sauvegardées
+        const saveBtn = document.querySelector('button[type="submit"]');
+        if (!saveBtn.classList.contains('btn-warning')) {
+            saveBtn.classList.remove('btn-primary');
+            saveBtn.classList.add('btn-warning');
+            saveBtn.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Modifications non sauvegardées';
+        }
+    }
+
+    // Réinitialiser l'indicateur après sauvegarde
+    document.querySelector('form').addEventListener('submit', function() {
+        const saveBtn = document.querySelector('button[type="submit"]');
+        saveBtn.classList.remove('btn-warning');
+        saveBtn.classList.add('btn-primary');
+        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Sauvegarder';
+    });
+</script>
+{% endblock %}
