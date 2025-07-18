@@ -59,7 +59,7 @@
             box-shadow: var(--shadow-md);
             z-index: 1000;
             overflow-y: auto;
-            scrollbar-color: rgba(255,255,255,0.3) transparent; /* Pour Firefox */
+            scrollbar-color: rgba(255,255,255,0.3) transparent; 
         }
         
         .sidebar .nav-link {
@@ -179,23 +179,6 @@
         input[type="password"]::-webkit-credentials-auto-fill-button {
             display: none !important;
         }
-/*.d7829b2f._2e7d873 {
-    margin-left: -4px;
-}
- .d7829b2f {
-    cursor: pointer;
-    border-radius: 6px;
-    padding: 4px;
-}
-.ds-icon {
-    line-height: 0;
-    display: inline-flex
-;
-}
-       .ds-icon>svg {
-    width: inherit;
-    height: inherit;
-} */
 
 
 .sidebar-toggle {
@@ -305,8 +288,68 @@
         </div>
     </div>
 
+
+
+
+
+    
+<div class="modal fade" id="infoModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      {# Choisit la couleur d’en-tête selon message.tags #}
+      <div class="modal-header bg-{{ message_level_class }} text-white">
+        <h5 class="modal-title" id="infoModalLabel">
+          {% if message_level == 'success' %}
+            <i class="fas fa-check-circle me-2"></i>Succès
+          {% else %}
+            <i class="fas fa-exclamation-triangle me-2"></i>Erreur
+          {% endif %}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        {% if message_level == 'error' %}
+                <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+          {% endif %}
+        <p id="modalMessage" class="mb-0"></p>
+      </div>
+      <div class="modal-footer justify-content-center border-0">
+        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+
+        function showModal(message, level) {
+  // Détermine la classe bootstrap selon le niveau
+  const header = document.querySelector('#infoModal .modal-header');
+  header.classList.remove('bg-success','bg-danger','bg-warning','bg-info');
+  header.classList.add(
+    level === 'success' ? 'bg-success' :
+    level === 'warning' ? 'bg-warning' :
+    level === 'info'    ? 'bg-info'    :
+                         'bg-danger'
+  );
+
+
+  const title = document.getElementById('infoModalLabel');
+  if (level === 'success') {
+    title.innerHTML = '<i class="fas fa-check-circle me-2"></i>';
+  } else {
+    title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Erreur';
+  }
+
+  document.getElementById('modalMessage').textContent = message;
+  new bootstrap.Modal(document.getElementById('infoModal')).show();
+}
+
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.querySelector('.sidebar');
             const sidebarToggle = document.getElementById('sidebarToggle');
@@ -323,8 +366,22 @@
                     });
                 }
             }
+
+            {% if messages %}
+                {% for message in messages %}
+                    showModal(
+                        "{{ message|escapejs }}",
+                        "{{ message.tags }}"
+                    );
+                {% endfor %}
+            {% endif %}
+
+
         });
     </script>
+
+    
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
