@@ -1,76 +1,56 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import JsonResponse, HttpResponse, Http404
-from django.views.decorators.http import require_POST
-from django.core.paginator import Paginator
-from django.utils import timezone
-from django.db.models import Q, Sum, Count
-from datetime import datetime, timedelta
-from django.conf import settings
-from django.urls import reverse
-from django.utils.html import format_html
-import cryptography.fernet as fernet
-import json
-import binascii
-from django.template.loader import get_template
-from io import BytesIO
-from xhtml2pdf import pisa
-from django.contrib.messages import get_messages
-from django.template.loader import render_to_string
-from django.template import Context 
-from tempfile import NamedTemporaryFile
-from .models import *
-from django.forms import modelformset_factory
-from .forms import *
-from .forms import PrescriptionForm
-from .decorators import patient_required, doctor_required, admin_required ,check_user_type_safe
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import get_user_model
 from django.db import transaction
-from .forms import PatientRegistrationForm, DoctorRegistrationForm, AdminRegistrationForm,ReimbursementForm
-import logging
-from Crypto.Signature import pkcs1_15 as PKCS1_v1_5
-from Crypto.Hash import SHA256
-from django.db import IntegrityError
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.graphics.shapes import Drawing, Line
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
-import tempfile
-import hashlib
-import ipfshttpclient
-from cryptography.fernet import Fernet
-from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseForbidden
-from urllib.parse import quote
-import mimetypes
+from django.contrib import messages
+from django.urls import reverse
 import json
 import io
 import os
 import tempfile
+from tempfile import NamedTemporaryFile
+import hashlib
+from io import BytesIO
 from collections import namedtuple
-from json import JSONEncoder
-
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
+from xhtml2pdf import pisa
+from datetime import datetime, timedelta
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse, HttpResponse, Http404
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import get_user_model
+from django.template.loader import get_template
+from django.http import HttpResponseForbidden
+from urllib.parse import quote
+from django.core.files.storage import default_storage
+from django.core.paginator import Paginator
+from django.db import IntegrityError
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.graphics.shapes import Drawing, Line
+from django.core.files.base import ContentFile
+import logging
 import uuid
-from .models import Patient, Doctor, Consultation, RadiologicalExam, Prescription
-
+from django.forms import modelformset_factory
+from django.template import Context 
+from .forms import *
+from .models import *
+from django.db.models import Q, Sum, Count
 from .blockchain import Wallet, Transaction, Block, Blockchain
 from .ipfsclient import *
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pkcs1_15 as PKCS1_v1_5
+import ipfshttpclient
+
 
 
 medical_blockchain = Blockchain()
 print(f"Nombre de blocs: [ {len(medical_blockchain.chain)} ]")
 
-import os
-import uuid
+
 
 def get_mac_address():
     mac = uuid.getnode()
@@ -82,8 +62,6 @@ NODE_IDENTIFIER = get_mac_address()
 print(f"Adresse MAC---> {NODE_IDENTIFIER}")
 
 
-def customJsonDecoder(jsonDict):
-    return namedtuple('T',jsonDict.keys())(*jsonDict.values())
 
 
 def home(request):
@@ -166,7 +144,12 @@ def register_patient(request):
 
                     medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
 
-                    messages.success(request, f'Enregistrement avec succès. Attendre de confirmer votre compte.')
+                    messages.add_message(
+                        request,
+                        messages.SUCCESS,
+                        f'Enregistrement avec succès. Attendre de confirmer votre compte.',
+                        extra_tags='verify-message'
+                    )
                     return redirect('login')
 
             except Exception as e:
@@ -222,7 +205,7 @@ def register_doctor(request):
 
                 # Transaction blockchain
                 transaction_data = {
-                    'action': 'Register doctor',
+                    'action': 'Register Doctor',
                     'doctor_id': doctor.pk,
                     'user_id': user.id,
                 }
@@ -237,7 +220,12 @@ def register_doctor(request):
                     raise ValueError("Erreur ajout blockchain")
 
                 medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                messages.success(request, f'Enregistrement avec succès. Attendre de confirmer votre compte.')
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    f'Enregistrement avec succès. Attendre de confirmer votre compte.',
+                    extra_tags='verify-message'
+                )
                 return redirect('login')
 
             except Exception as e:
@@ -280,7 +268,7 @@ def register_admin(request):
 
                 # Créer une transaction blockchain
                 transaction_data = {
-                    'action': 'Register admin',
+                    'action': 'Register Admin',
                     'user_id': user.id,
                 }
 
@@ -298,7 +286,12 @@ def register_admin(request):
                     raise ValueError("Erreur lors de l'ajout de la transaction à la blockchain")
                 # Miner la transaction
                 medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                messages.success(request, f"Enregistrement avec succès. Attendre de confirmer votre compte.")
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    f'Enregistrement avec succès. Attendre de confirmer votre compte.',
+                    extra_tags='verify-message'
+                )
                 return redirect('login')
 
             except IntegrityError:
@@ -423,7 +416,6 @@ def create_user(request, user_type):
                     'action': f'Create {user_type}',
                     'admin_id': request.user.id,
                     'new_user_id': user.id,
-                    'admin_identity': admin_wallet_with_private.identity,
                     'details': f"L'administrateur {admin_wallet_with_private.identity} a ajouté un {user_type} : {wallet.identity}"
                 }
 
@@ -479,6 +471,9 @@ def login_view(request):
             if user is not None:
                 if user.is_verified:
                     login(request, user)
+                    if 'login_page' in request.session:
+                        del request.session['login_page']
+                    
                     redirect_map = {
                         'patient': 'patient_dashboard',
                         'doctor': 'doctor_dashboard',
@@ -493,10 +488,8 @@ def login_view(request):
         request.session['login_page'] = True
         return render(request, 'registration/login.html')
     
-    # Réinitialisez le marqueur pour les requêtes GET
-    if 'login_page' in request.session:
-        del request.session['login_page']
     return render(request, 'registration/login.html')
+
 
 @login_required
 def logout_confirmation(request):
@@ -507,16 +500,22 @@ def logout_confirmation(request):
 def logout_view(request):
     """Handle the actual logout"""
     if request.method == 'POST':
-        messages.success(request, f'Au revoir {request.user.get_full_name() or request.user.username}! Vous êtes maintenant déconnecté.')
+        user_name = request.user.get_full_name() or request.user.username
         
-        
+        # Effectuer la déconnexion
         logout(request)
         
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            f'<i class="fas fa-check-circle"></i> Au revoir {user_name}! Vous êtes maintenant déconnecté.',
+            extra_tags='alert-success logout logout-message'
+        )
         
         return redirect('login') 
     else:
-       
         return render(request, 'registration/signout.html')
+
 
 # Patient Views
 @login_required
@@ -556,28 +555,18 @@ def doctor_dashboard(request):
     }
     return render(request, 'doctor/dashboard.html', context)
 
-# def doctor_dashboard(request):
-#     doctor = request.user.doctor
-    
-#     recent_consultations = Consultation.objects.filter(
-#         doctor=doctor
-#     ).order_by('-date')[:5]
-   
-#     context = {
-#         'doctor': doctor,
-#         'recent_consultations': recent_consultations,
-       
-#     }
-#     return render(request, 'doctor/dashboard.html', context)
-
-
 @login_required
 def patient_documents(request):
     patient = getattr(request.user, 'patient', None)
     if not patient:
         return HttpResponseForbidden("Accès non autorisé.")
 
-    documents = MedicalDocument.objects.filter(patient=patient, is_active=True)
+    # Filtrer uniquement les documents avec un fichier attaché
+    documents = MedicalDocument.objects.filter(
+        patient=patient, 
+        is_active=True,
+        file_attachment__isnull=False  
+    ).exclude(file_attachment='')  
 
     doc_type = request.GET.get('type')
     if doc_type:
@@ -593,7 +582,6 @@ def patient_documents(request):
         'current_type': doc_type,
     }
     return render(request, 'patient/documents.html', context)
-
 
 @login_required
 def download_document(request, doc_id):
@@ -747,10 +735,8 @@ def delete_document(request, document_id):
                 return redirect('patient_documents')
 
             transaction_data = {
-                'action': 'delete_document',
+                'action': 'Delete Document',
                 'document_id': document.id,
-                'patient_identity': patient.user.identity,  
-                'doctor_identity': doctor.user.identity,  
                 'description': f"Suppression du document '{title}'"
             }
 
@@ -768,7 +754,7 @@ def delete_document(request, document_id):
             medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
 
 
-            # Supprimer du MFS (optionnel)
+            # Supprimer du MFS
             try:
                 mfs_path = f"/documents/{title}"
                 client = ipfshttpclient.connect()
@@ -835,9 +821,9 @@ def create_reimbursement(request):
         patient = request.user.patient
     except AttributeError:
         messages.error(request, "Vous devez être un patient pour créer une demande de remboursement.")
-        return redirect('dashboard')
+        return redirect('patient_dashboard')
     
-    # Get patient's consultations that don't have reimbursement requests yet
+    # Obtenir les consultations du patient qui n'ont pas encore de demandes de remboursement
     available_consultations = Consultation.objects.filter(
         patient=patient
     ).exclude(
@@ -850,14 +836,60 @@ def create_reimbursement(request):
             reimbursement = form.save(commit=False)
             reimbursement.patient = patient
             reimbursement.save()
-            
-            
-            
+
+            # Récupérer l'ID du remboursement nouvellement créé
+            reimbursement_id = reimbursement.id 
+
+            # Charger le portefeuille du patient
+            wallet_obj = Wallet.load_wallet(request.user)
+            if not wallet_obj:
+                messages.error(request, "Erreur: Portefeuille non trouvé.")
+                return redirect('patient_records', patient_id=patient.id)
+
+            # Charger la clé privée
+            wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+            if not wallet_with_private:
+                messages.error(request, "Erreur système: Clé de sécurité manquante")
+                return redirect('patient_records', patient_id=patient.id)
+
+            # Préparer les données de la transaction
+            transaction_data = {
+                'action': 'Demande de remboursement',
+                'patient_identity': patient.user.identity,
+                'reimbursement_id': reimbursement_id,
+            }
+
+            # Créer la transaction blockchain
+            blockchain_transaction = Transaction(
+                sender=wallet_with_private,
+                recipient="SYSTEM",
+                data=transaction_data
+            )
+
+            if not blockchain_transaction.sign_transaction():
+                logger.error(f"Échec de la signature de la transaction pour la demande de remboursement {reimbursement.id}")
+                messages.error(request, "Erreur lors de la signature de la transaction.")
+                return redirect('patient_reimbursements')
+
+            if not medical_blockchain.add_transaction(blockchain_transaction):
+                logger.error(f"Échec de l'ajout de la transaction pour la demande de remboursement {reimbursement.id}")
+                messages.error(request, "Erreur lors de l'ajout de la transaction.")
+                return redirect('patient_reimbursements')
+
+            block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
+
+            if not block:
+                logger.error(f"Échec du minage du bloc pour la demande de remboursement {reimbursement.id}")
+                messages.error(request, "Erreur lors du minage de la transaction.")
+                return redirect('patient_reimbursements')
+
             messages.success(request, "Votre demande de remboursement a été soumise avec succès.")
             return redirect('patient_reimbursements')
+        else:
+            messages.error(request, "Veuillez corriger les erreurs du formulaire.")
+    
     else:
         form = ReimbursementForm()
-        # Filter consultations in the form
         form.fields['consultation'].queryset = available_consultations
     
     return render(request, 'patient/create_reimbursement.html', {
@@ -1159,7 +1191,7 @@ def generate_prescription_pdf(request, consultation_id):
         # INFORMATIONS DU PATIENT
         patient_left = f"<b>Nom:</b> {patient.user.last_name}"
         patient_middle = f"<b>Prénom:</b> {patient.user.first_name}"
-        patient_right = f"<b>Âge:</b> {calculate_age(patient.date_of_birth)} ans"
+        patient_right = f"<b>Âge:</b> {patient.age} ans"
         
         patient_table = Table([
             [Paragraph(patient_left, patient_left_style),
@@ -1382,10 +1414,10 @@ def generate_prescription_pdf(request, consultation_id):
 
 
 
-def calculate_age(birth_date):
-    """Calculate age from birth date"""
-    today = datetime.now().date()
-    return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+# def calculate_age(birth_date):
+#     """Calculate age from birth date"""
+#     today = datetime.now().date()
+#     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 @login_required
 def consultations_list(request):
@@ -1550,9 +1582,7 @@ def create_consultation(request):
 
         # 7. Ajout à la blockchain
         if not medical_blockchain.add_transaction(
-            sender=wallet_with_private,
-            recipient=patient.user.identity,
-            data=tx.data
+            transaction_obj=tx
         ):
             consultation.delete()
             messages.error(request, "Échec de l'enregistrement blockchain")
@@ -1564,7 +1594,12 @@ def create_consultation(request):
             messages.error(request, "Échec de la validation blockchain")
             return redirect('consultations')
 
-        messages.success(request, f"Consultation enregistrée pour {patient.user.get_full_name()}")
+        messages.add_message(
+            request,
+            messages.SUCCESS,
+            f"Consultation enregistrée pour {patient.user.get_full_name()}",
+            extra_tags='verify-message'
+        )
         return redirect('doctor_dashboard')
     except Exception as e:
         logger.exception(f"Error in create_consultation: {e}")
@@ -1742,9 +1777,7 @@ def edit_consultation(request, consultation_id):
 
             # Ajouter à la blockchain
             if not medical_blockchain.add_transaction(
-                sender=wallet_with_private, 
-                recipient=consultation.patient.user.identity, 
-                data=blockchain_transaction.data
+                transaction_obj=blockchain_transaction
             ):
                 logger.error(f"Échec d'ajout transaction pour consultation {consultation.id}")
                 messages.error(request, "Erreur d'enregistrement blockchain")
@@ -1829,9 +1862,7 @@ def delete_consultation(request, consultation_id):
 
             # 6. Ajout à la blockchain (avec les arguments requis)
             if not medical_blockchain.add_transaction(
-                sender=wallet_with_private, 
-                recipient=consultation.patient.user.identity, 
-                data=blockchain_transaction.data
+                transaction_obj=blockchain_transaction
             ):
                 logger.error(f"Échec d'ajout transaction pour consultation {consultation.id}")
                 messages.error(request, "Erreur d'enregistrement blockchain")
@@ -1933,9 +1964,7 @@ def create_prescription(request, patient_id):
 
                         # Ajout à la blockchain
                         if not medical_blockchain.add_transaction(
-                            sender=wallet_with_private,
-                            recipient=patient.user.identity,
-                            data=tx.data
+                            transaction_obj=tx
                         ):
                             prescription.delete()
                             messages.error(request, "Échec de l'enregistrement blockchain")
@@ -1950,7 +1979,12 @@ def create_prescription(request, patient_id):
                     messages.error(request, "Échec de la validation blockchain")
                     return redirect('patient_records', patient_id=patient_id)
 
-                messages.success(request, "Ordonnance créée avec succès")
+                messages.add_message(
+                    request,
+                    messages.SUCCESS,
+                    f'Ordonnance créée avec succès,',
+                    extra_tags='verify-message'
+                )
                 return redirect('patient_records', patient_id=patient_id)
 
             except Exception as e:
@@ -2074,24 +2108,30 @@ def verify_user(request, user_id):
             messages.error(request, "Échec: Clé privée admin introuvable")
             return redirect('manage_users')
 
-        
         if action == "verify":
             user.is_verified = True
             user.save()
-            messages.success(request, "Compte vérifié avec succès")
-
+            messages.add_message(
+                request,
+                messages.SUCCESS,
+                f'<i class="fas fa-check-circle"></i> Compte de {user.get_full_name()} vérifié avec succès',
+                extra_tags='verify-message'
+            )
+            
         elif action == "suspend":
             user.is_verified = False
             user.is_active = False
             user.save()
-            messages.warning(request, "Compte suspendu")
+            messages.add_message(
+                request,
+                messages.WARNING,
+                f'<i class="fas fa-exclamation-triangle"></i> Compte de {user.get_full_name()} suspendu',
+                extra_tags='suspend-message'
+            )
         else:
             messages.error(request, "Action invalide")
             return redirect('manage_users')
         
-        user.save()
-
-        # 4. Préparation transaction blockchain
         recipient_wallet = Wallet.load_wallet(user)
         tx_data = {
             "action": "Verify user" if action == "verify" else "Suspend user",
@@ -2102,7 +2142,6 @@ def verify_user(request, user_id):
         }
 
         try:
-
             if not medical_blockchain.add_transaction(
                 sender=admin_wallet_with_private, 
                 recipient=recipient_wallet.identity if recipient_wallet else "SYSTEM",
@@ -2113,15 +2152,13 @@ def verify_user(request, user_id):
             medical_blockchain.mine_pending_transactions(
                 miner_address=NODE_IDENTIFIER
             )
-            
-            
         except Exception as e:
             logger.exception("ERREUR BLOCKCHAIN")
             messages.error(request, f"Erreur système: {str(e)}")
 
         return redirect('manage_users')
 
-    return render(request, 'administrator/verify_user.html', {'user': user})
+    return render(request, 'administrator/manage_users.html', {'user': user})
 
 @login_required
 def admin_reimbursements(request):
@@ -2173,10 +2210,8 @@ def admin_reimbursements(request):
 
 @login_required
 def process_reimbursement(request, reimbursement_id):
-    """Admin processes a specific reimbursement request"""
-    # 1) Vérifier que c'est bien un admin
     if request.user.user_type != 'admin':
-        messages.error(request, "Accès réservé aux administrateurs.")
+        messages.error(request, "Accès réservé aux administrateurs.", extra_tags='alert-danger')
         return redirect('login')
 
     reimbursement = get_object_or_404(Reimbursement, id=reimbursement_id)
@@ -2185,10 +2220,9 @@ def process_reimbursement(request, reimbursement_id):
         action = request.POST.get('action')
         admin_comments = request.POST.get('admin_comments', '').strip()
 
-        # Charger le portefeuille de l'admin et sa clé privée
         admin_wallet_obj = Wallet.load_wallet(request.user)
         if not admin_wallet_obj:
-            messages.error(request, "Portefeuille administrateur non trouvé.")
+            messages.error(request, "Portefeuille administrateur non trouvé.", extra_tags='alert-danger')
             return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
         private_key = load_private_key(
@@ -2196,30 +2230,27 @@ def process_reimbursement(request, reimbursement_id):
             request.user.user_type
         )
         if not private_key:
-            messages.error(request, "Clé privée du portefeuille introuvable.")
+            messages.error(request, "Clé privée du portefeuille introuvable.", extra_tags='alert-danger')
             return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
         try:
             with transaction.atomic():
                 if action == 'approve':
-                    # --- APPROVAL ---
                     raw_amount = request.POST.get('amount_approved', '')
                     try:
                         amount_approved = float(raw_amount)
                     except ValueError:
-                        messages.error(request, "Montant approuvé invalide.")
+                        messages.error(request, "Montant approuvé invalide.", extra_tags='alert-danger')
                         raise
 
-                    # validations métier
                     if amount_approved <= 0:
-                        messages.error(request, "Le montant doit être strictement positif.")
+                        messages.error(request, "Le montant doit être strictement positif.", extra_tags='alert-danger')
                         return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
                     if amount_approved > reimbursement.amount_requested:
-                        messages.error(request, "Le montant approuvé ne peut pas dépasser le montant demandé.")
+                        messages.error(request, "Le montant approuvé ne peut pas dépasser le montant demandé.", extra_tags='alert-danger')
                         return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
-                    # tout est OK → on met à jour le modèle
                     reimbursement.status = 'approved'
                     reimbursement.amount_approved = amount_approved
                     reimbursement.notes = admin_comments
@@ -2227,7 +2258,6 @@ def process_reimbursement(request, reimbursement_id):
                     reimbursement.processed_at = timezone.now()
                     reimbursement.save()
 
-                    # préparer et signer la transaction blockchain
                     tx = Transaction(
                         sender=private_key,
                         recipient=reimbursement.patient.user.identity,
@@ -2242,23 +2272,26 @@ def process_reimbursement(request, reimbursement_id):
                     if not signature:
                         raise Exception("Échec de la signature blockchain.")
 
-                    if not medical_blockchain.add_transaction(
-                        sender=private_key,
-                        recipient=reimbursement.patient.user.identity,
-                        data=tx.data
-                    ):
+                    if not medical_blockchain.add_transaction(transaction_obj=tx):
                         raise Exception("Échec de l'ajout de la transaction blockchain.")
 
                     if not medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER):
                         raise Exception("Échec du minage du bloc.")
 
-                    messages.success(request, f"Remboursement #{reimbursement.id} approuvé pour {amount_approved:.2f} DA.")
+                    messages.success(
+                        request,
+                        f'<i class="fas fa-check-circle"></i> Remboursement #{reimbursement.id} approuvé pour {amount_approved:.2f} DA.',
+                        extra_tags='alert-success reimbursement-message'
+                    )
                     return redirect('admin_reimbursements')
 
                 elif action == 'deny':
-                    # --- DENIAL ---
                     if not admin_comments:
-                        messages.error(request, "Veuillez fournir un motif pour le refus.")
+                        messages.warning(
+                            request,
+                            '<i class="fas fa-exclamation-triangle"></i> Veuillez fournir un motif pour le refus.',
+                            extra_tags='alert-warning'
+                        )
                         return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
                     reimbursement.status = 'rejected'
@@ -2279,32 +2312,29 @@ def process_reimbursement(request, reimbursement_id):
                     if not tx.sign_transaction():
                         raise Exception("Échec de la signature blockchain.")
 
-                    if not medical_blockchain.add_transaction(
-                        sender=private_key,
-                        recipient=reimbursement.patient.user.identity,
-                        data=tx.data
-                    ):
+                    if not medical_blockchain.add_transaction(transaction_obj=tx):
                         raise Exception("Échec de l'ajout de la transaction blockchain.")
 
                     if not medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER):
                         raise Exception("Échec du minage du bloc.")
 
-                    messages.success(request, f"Remboursement #{reimbursement.id} rejeté.")
+                    messages.success(
+                        request,
+                        f'<i class="fas fa-check-circle"></i> Remboursement #{reimbursement.id} rejeté.',
+                        extra_tags='alert-success reimbursement-message'
+                    )
                     return redirect('admin_reimbursements')
 
                 else:
-                    messages.error(request, "Action invalide.")
+                    messages.error(request, "Action invalide.", extra_tags='alert-danger')
                     return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
         except Exception as e:
-            # En cas d'exception sur la transaction ou la blockchain, on retombe ici
-            messages.error(request, f"Erreur interne : {e}")
+            messages.error(request, f"Erreur interne : {e}", extra_tags='alert-danger')
             return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
 
-    # GET → affichage du formulaire
-    return render(request, 'admin/process_reimbursement.html', {
-        'reimbursement': reimbursement
-    })
+    return render(request, 'admin/process_reimbursement.html', {'reimbursement': reimbursement})
+
 
 @login_required
 def reimbursement_detail_admin(request, reimbursement_id):
@@ -2395,9 +2425,7 @@ def create_analysis(request, patient_id):
 
                 # Ajout à la blockchain
                 if not medical_blockchain.add_transaction(
-                    sender=wallet_with_private,
-                    recipient=patient.user.identity,
-                    data=tx.data
+                    transaction_obj=tx
                 ):
                     analysis.delete()
                     messages.error(request, "Échec de l'enregistrement blockchain")
@@ -2434,17 +2462,6 @@ def generate_analysis_prescription_pdf(request, analysis_id):
         analysis = get_object_or_404(MedicalAnalysis, id=analysis_id, doctor=doctor)
         patient = analysis.patient
         
-      
-        
-        # Load doctor's wallet
-        wallet_obj = Wallet.load_wallet(request.user)
-        if not wallet_obj:
-            logger.error(f"No wallet found for user {request.user.id}")
-            messages.error(request, "Erreur: Portefeuille non trouvé.")
-            return redirect('analysis_list', patient_id=patient.id)
-
-
-
         # Initialize IPFS
         ipfs_manager = IPFSManager()
         
@@ -2511,7 +2528,7 @@ def generate_analysis_prescription_pdf(request, analysis_id):
         patient_info = f"""
         <b>Nom et Prénom:</b> {patient.user.get_full_name()}<br/>
         <b>Date de naissance:</b> {patient.date_of_birth.strftime('%d/%m/%Y')}<br/>
-        <b>Âge:</b> {calculate_age(patient.date_of_birth)} ans<br/>
+        <b>Âge:</b> {patient.age} ans <br/>
         <b>Sexe:</b> {patient.get_gender_display()}<br/>
         <b>Adresse:</b> {patient.address or 'N/A'}<br/>
         <b>Téléphone:</b> {patient.phone_number or 'N/A'}
@@ -2710,7 +2727,6 @@ def generate_analysis_prescription_pdf(request, analysis_id):
                     ipfs_hash=ipfs_cid
                 )
                 
-               
                 # Method 1: Direct ContentFile approach
                 try:
                     pdf_file = ContentFile(pdf_content, name=filename)
@@ -2766,80 +2782,7 @@ def generate_analysis_prescription_pdf(request, analysis_id):
                 except Exception as basic_doc_error:
                     logger.error(f"Failed to create even basic document: {basic_doc_error}")
 
-            # 4. Create digital signature for the prescription
-            try:
-                prescription_data = {
-                    'prescription_id': analysis.id,
-                    'document_id': medical_doc.id if medical_doc else None,
-                    'ipfs_cid': ipfs_cid,
-                    'timestamp': timezone.now().isoformat(),
-                    'hash': hashlib.sha256(pdf_content).hexdigest(),
-                    'analysis_type': analysis.analysis_type,
-                    'analysis_title': analysis.title,
-                    'patient_id': patient.id,
-                    'doctor_id': doctor.id
-                }
-                signature = wallet_obj.sign_data(json.dumps(prescription_data, sort_keys=True))
-                logger.info("Digital signature created successfully")
-            except Exception as signature_error:
-                logger.error(f"Digital signature creation failed: {signature_error}")
-                signature = None
-
-            # 5. Create blockchain transaction
-            try:
-                transaction_data = {
-                    'action': 'analysis_prescription_generated',
-                    'prescription_id': analysis.id,
-                    'document_id': medical_doc.id if medical_doc else None,
-                    'patient_id': patient.id,
-                    'doctor_id': doctor.id,
-                    'user_id': request.user.id,
-                    'timestamp': timezone.now().isoformat(),
-                    'hash': hashlib.sha256(pdf_content).hexdigest(),
-                    'digital_signature': signature,
-                    'ipfs_cid': ipfs_cid,
-                    'details': f'Analysis prescription generated: {analysis.title}'
-                }
-
-                blockchain_transaction = Transaction(
-                    sender=wallet_obj,
-                    recipient="System",
-                    data=transaction_data
-                )
-                
-                if blockchain_transaction.sign_transaction():
-                    if medical_blockchain.add_transaction(blockchain_transaction):
-                        # Mine pending transactions
-                        block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-
-                        if block:
-                            logger.info(f"Blockchain transaction successful: {blockchain_transaction.transaction_id}")
-                        else:
-                            logger.error("Failed to mine block")
-                    else:
-                        logger.error("Failed to add transaction to blockchain")
-                else:
-                    logger.error("Failed to sign blockchain transaction")
-                    
-            except Exception as blockchain_error:
-                logger.error(f"Blockchain transaction failed: {blockchain_error}")
-
- 
-            try:
-               
-                logger.info("Activity logged successfully")
-            except Exception as log_error:
-                logger.error(f"Activity logging failed: {log_error}")
-                # Try alternative logging without optional fields
-                try:
-                    
-                    logger.info("Alternative activity logged successfully")
-                except Exception as alt_log_error:
-                    logger.error(f"Alternative activity logging also failed: {alt_log_error}")
-
-            logger.info(f"Analysis prescription generated successfully for patient {patient.id}")
-
-            # Create response
+            
             response = HttpResponse(pdf_content, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
             return response
@@ -2888,6 +2831,12 @@ def edit_analysis_results(request, analysis_id):
         messages.error(request, "Erreur: Portefeuille médecin non trouvé.")
         return redirect('analysis_list', patient_id=analysis.patient.id)
 
+    wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
+    if not wallet_with_private:
+        logger.error(f"No private key for doctor {doctor.id}")
+        messages.error(request, "Erreur système: Clé de sécurité manquante")
+        return redirect('analysis_list', patient_id=analysis.patient.id)
+    
     if request.method == 'POST':
         form = AnalysisResultsForm(request.POST, instance=analysis)
         formset = ParameterFormSet(
@@ -2923,7 +2872,7 @@ def edit_analysis_results(request, analysis_id):
 
                     # 4. Créer la transaction blockchain
                     transaction_data = {
-                        'action': 'edit_analysis',
+                        'action': 'Edit Analysis',
                         'analysis_id': analysis.id,
                         'patient': analysis.patient.user.identity,  
                         'doctor': wallet_obj.identity,  
@@ -2933,11 +2882,10 @@ def edit_analysis_results(request, analysis_id):
                         'details': f'Analyse mise à jour: {analysis.title}'
                     }
 
-
                     data_hash = hashlib.sha256(json.dumps(transaction_data, sort_keys=True).encode()).hexdigest()
 
                     blockchain_transaction = Transaction(
-                        sender=wallet_obj,
+                        sender=wallet_with_private,
                         recipient=analysis.patient.user.identity, 
                         data={
                             'transaction_data': transaction_data,
@@ -2963,16 +2911,18 @@ def edit_analysis_results(request, analysis_id):
                     logger.info(f"Analyse {analysis.id} mise à jour et enregistrée dans la blockchain (ID de transaction: {blockchain_transaction.transaction_id})")
                     messages.success(request, 'Résultats d\'analyse sauvegardés avec succès.')
 
-                    # Générer le PDF si terminé
-                    if analysis.status == 'completed':
-                        return redirect('generate_analysis_pdf', analysis_id=analysis.id)
-
+                    # Redirection vers la liste des analyses
                     return redirect('analysis_list', patient_id=analysis.patient.id)
 
             except Exception as e:
                 logger.exception(f"Erreur lors de la mise à jour des résultats d'analyse {analysis_id}: {e}")
                 messages.error(request, f'Erreur lors de la sauvegarde: {str(e)}')
-                return redirect('analysis_list', patient_id=analysis.patient.id)
+                # On reste sur la même page pour permettre à l'utilisateur de corriger
+                return render(request, 'doctor/edit_analysis_results.html', {
+                    'form': form,
+                    'formset': formset,
+                    'analysis': analysis
+                })
 
     else:
         form = AnalysisResultsForm(instance=analysis)
@@ -2985,7 +2935,6 @@ def edit_analysis_results(request, analysis_id):
         'formset': formset,
         'analysis': analysis
     })
-
 
 @login_required
 def delete_analysis(request, analysis_id):
@@ -3044,9 +2993,7 @@ def delete_analysis(request, analysis_id):
 
                 # 3. Ajouter la transaction à la blockchain
                 if not medical_blockchain.add_transaction(
-                    sender=blockchain_transaction.sender, 
-                    recipient=blockchain_transaction.recipient,
-                    data=blockchain_transaction.data
+                    transaction_obj=blockchain_transaction
                 ):
                     logger.error(f"Échec de l'ajout de la transaction pour la suppression de l'analyse {analysis.id}")
                     raise Exception(f"Échec de l'ajout de la transaction pour la suppression de l'analyse {analysis.id}")
@@ -3080,13 +3027,6 @@ def generate_analysis_pdf(request, analysis_id):
         doctor = request.user.doctor
         analysis = get_object_or_404(MedicalAnalysis, id=analysis_id, doctor=doctor)
         patient = analysis.patient
-
-        # Charger le portefeuille du médecin
-        wallet_obj = Wallet.load_wallet(request.user)
-        if not wallet_obj:
-            logger.error(f"Aucun portefeuille trouvé pour l'utilisateur {request.user.id}")
-            messages.error(request, "Erreur: Portefeuille non trouvé.")
-            return redirect('analysis_list', patient_id=patient.id)
 
         # Initialiser IPFS
         ipfs_manager = IPFSManager()
@@ -3206,7 +3146,7 @@ def generate_analysis_pdf(request, analysis_id):
         # 2. INFORMATIONS DU PATIENT
         patient_left = f"<b>Nom:</b> {patient.user.last_name}"
         patient_middle = f"<b>Prénom:</b> {patient.user.first_name}"
-        patient_right = f"<b>Âge:</b> {calculate_age(patient.date_of_birth)} ans"
+        patient_right = f"<b>Âge:</b> {patient.age} ans"
         
         patient_table = Table([
             [Paragraph(patient_left, patient_left_style),
@@ -3421,60 +3361,6 @@ def generate_analysis_pdf(request, analysis_id):
                 except Exception as basic_doc_error:
                     logger.error(f"Failed to create even basic document: {basic_doc_error}")
 
-            # 4. Create digital signature for the analysis report
-            try:
-                analysis_data = {
-                    'analysis_id': analysis.id,
-                    'document_id': medical_doc.id if medical_doc else None,
-                    'ipfs_cid': ipfs_cid,
-                    'timestamp': timezone.now().isoformat(),
-                    'hash': hashlib.sha256(pdf_content).hexdigest(),
-                    'analysis_type': analysis.analysis_type,
-                    'patient_id': patient.id,
-                    'doctor_id': doctor.id
-                }
-                signature = wallet_obj.sign_data(json.dumps(analysis_data, sort_keys=True))
-                logger.info("Digital signature created successfully")
-            except Exception as signature_error:
-                logger.error(f"Digital signature creation failed: {signature_error}")
-                signature = None
-
-        try:
-            transaction_data = {
-                'action': 'Analysis Report Generated',
-                'analysis_id': analysis.id,
-                'document_id': medical_doc.id if medical_doc else None,
-                'patient_identity': patient.user.identity,
-                'doctor_identity': doctor.user.identity,  
-                'user_identity': request.user.identity,  
-                'timestamp': timezone.now().isoformat(),
-                'hash': hashlib.sha256(pdf_content).hexdigest(),
-                'digital_signature': signature,
-                'details': f'Analysis report generated: {analysis.get_analysis_type_display()}'
-            }
-
-            blockchain_transaction = Transaction(
-                sender=wallet_obj,
-                recipient="System",
-                data=transaction_data
-            )
-            
-            if blockchain_transaction.sign_transaction():
-                if medical_blockchain.add_transaction(blockchain_transaction):
-                    # Miner les transactions en attente
-                    block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                    if block:
-                        logger.info(f"Transaction blockchain réussie: {blockchain_transaction.transaction_id}")
-                    else:
-                        logger.error("Échec du minage du bloc")
-                else:
-                    logger.error("Échec de l'ajout de la transaction à la blockchain")
-            else:
-                logger.error("Échec de la signature de la transaction blockchain")
-                
-        except Exception as blockchain_error:
-            logger.error(f"Échec de la transaction blockchain: {blockchain_error}")
-
         # Retourner le PDF
         response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -3484,6 +3370,7 @@ def generate_analysis_pdf(request, analysis_id):
         logger.exception(f"Erreur lors de la génération du PDF pour l'analyse {analysis_id}: {e}")
         messages.error(request, f'Erreur lors de la génération du rapport: {str(e)}')
         return redirect('analysis_list', patient_id=analysis.patient.id if hasattr(analysis, 'patient') else None)
+
 
 @login_required
 def create_radio(request, patient_id):
@@ -3554,9 +3441,7 @@ def create_radio(request, patient_id):
 
                 # Ajout à la blockchain
                 if not medical_blockchain.add_transaction(
-                    sender=wallet_with_private,
-                    recipient=patient.user.identity,
-                    data=tx.data
+                    transaction_obj=tx
                 ):
                     radio.delete()
                     messages.error(request, "Échec de l'enregistrement blockchain") 
@@ -3657,7 +3542,7 @@ def edit_radio_results(request, radio_id):
                 radio.save()
 
                 # 5. Ajout à la blockchain (identique aux autres vues)
-                if not medical_blockchain.add_transaction(tx.sender, tx.recipient, tx.data):
+                if not medical_blockchain.add_transaction(transaction_obj=tx):
                     messages.error(request, "Échec enregistrement blockchain")
                     return redirect('radio_list', patient_id=patient.id)
 
@@ -3678,49 +3563,6 @@ def edit_radio_results(request, radio_id):
         'form': form,
         'radio': radio
     })
-
-
-@login_required
-def generate_radio_pdf(request, radio_id):
-    """Générer un PDF du rapport radiologique"""
-    try:
-        doctor = request.user.doctor
-        radio = get_object_or_404(RadiologicalExam, id=radio_id, doctor=doctor)
-        patient = radio.patient
-
-    
-        # Créer le contexte pour le PDF
-        context = {
-            'radio': radio,
-            'patient': patient,
-            'doctor': doctor,
-            'generated_date': timezone.now(),
-            'hospital_name': 'Centre Médical',  # À personnaliser
-            'hospital_address': 'Adresse du centre',  # À personnaliser
-        }
-
-        # Générer le PDF
-        template = get_template('doctor/radio_pdf.html')
-        html = template.render(context)
-        
-        result = BytesIO()
-        pdf = pisa.pisaDocument(BytesIO(html.encode("UTF-8")), result)
-        
-        if not pdf.err:
-           
-            
-            response = HttpResponse(result.getvalue(), content_type='application/pdf')
-            filename = f"rapport_radio_{patient.user.last_name}_{radio.ordered_date.strftime('%Y%m%d')}_{radio.id}.pdf"
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
-        else:
-            messages.error(request, 'Erreur lors de la génération du PDF.')
-            return redirect('radio_list', patient_id=patient.id)
-            
-    except Exception as e:
-        logger.exception(f"Error generating radio PDF for radio_id {radio_id}: {e}")
-        messages.error(request, f"Erreur lors de la génération du PDF: {str(e)}")
-        return redirect('radio_list', patient_id=patient.id)
 
 
 @login_required
@@ -3777,9 +3619,7 @@ def delete_radio(request, radio_id):
 
             # 5. Ajouter la transaction à la blockchain
             if not medical_blockchain.add_transaction(
-                sender=blockchain_transaction.sender,
-                recipient=blockchain_transaction.recipient,
-                data=blockchain_transaction.data
+                transaction_obj=blockchain_transaction
             ):
                 messages.error(request, "Échec de l'enregistrement dans la blockchain")
                 return redirect('radio_list', patient_id=patient.id)
@@ -3872,7 +3712,7 @@ def generate_radio_pdf(request, radio_id):
     <b>Nom:</b> {patient.user.last_name}<br/>
     <b>Prénom:</b> {patient.user.first_name}<br/>
     <b>Date de naissance:</b> {patient.date_of_birth.strftime('%d/%m/%Y')}<br/>
-    <b>Âge:</b> {calculate_age(patient.date_of_birth)} ans<br/>
+    <b>Âge:</b> {patient.age} ans<br/>
     <b>Sexe:</b> {patient.get_gender_display()}<br/>
     """
     elements.append(Paragraph(patient_info, styles['Normal']))
@@ -4123,30 +3963,18 @@ def view_radio_images(request, radio_id):
         messages.error(request, "Erreur d'accès aux images")
         return redirect('doctor_dashboard')
 
-
+@login_required
 def generate_prescriptionradio_pdf(request, radio_id):
-    """Generate PDF prescription for radiological exam with IPFS and blockchain integration"""
+    """Generate PDF prescription for radiological exam with IPFS storage"""
     try:
         doctor = request.user.doctor
         radio = get_object_or_404(RadiologicalExam, id=radio_id, doctor=doctor)
         patient = radio.patient
 
-        # Load doctor's wallet
-        wallet_obj = Wallet.load_wallet(request.user)
-        if not wallet_obj:
-            logger.error(f"No wallet found for user {request.user.id}")
-            messages.error(request, "Erreur: Portefeuille non trouvé.")
-            return redirect('radio_list', patient_id=patient.id)
-
-        wallet_with_private = load_private_key(wallet_obj.public_key_pem, request.user.user_type)
-        if not wallet_with_private:
-            messages.error(request, "Erreur système: Clé de sécurité manquante") 
-            return redirect('radio_list', patient_id=patient.id)
-
-        # Initialize IPFS
+        # Initialiser IPFS
         ipfs_manager = IPFSManager()
 
-        # Create PDF content
+        # Créer le PDF
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
@@ -4207,7 +4035,7 @@ def generate_prescriptionradio_pdf(request, radio_id):
         patient_info = f"""
         <b>Nom et Prénom:</b> {patient.user.get_full_name()}<br/>
         <b>Date de naissance:</b> {patient.date_of_birth.strftime('%d/%m/%Y')}<br/>
-        <b>Âge:</b> {calculate_age(patient.date_of_birth)} ans<br/>
+        <b>Âge:</b> {patient.age} ans<br/>
         <b>Sexe:</b> {patient.get_gender_display()}<br/>
         <b>Adresse:</b> {patient.address or 'N/A'}<br/>
         <b>Téléphone:</b> {patient.phone_number or 'N/A'}
@@ -4295,53 +4123,7 @@ def generate_prescriptionradio_pdf(request, radio_id):
             radio.prescription_document = medical_doc
             radio.save()
 
-            # Create digital signature for the prescription
-            prescription_data = {
-                'radio_id': radio.id,
-                'document_id': medical_doc.id,
-                'ipfs_cid': ipfs_cid,
-                'timestamp': timezone.now().isoformat(),
-                'hash': hashlib.sha256(pdf_content).hexdigest(),
-                'exam_type': radio.exam_type,
-                'body_part': radio.body_part,
-                'patient_id': patient.id,
-                'doctor_id': doctor.id
-            }
-            signature = blockchain_transaction.sign_transaction()
-            if not signature:
-                            messages.error(request, "Échec de la signature sécurisée")
-
-            # Create blockchain transaction
-            transaction_data = {
-                'action': 'prescription_generated',
-                'radio_id': radio.id,
-                'document_id': medical_doc.id,
-                'patient_id': patient.id,
-                'doctor_id': doctor.id,
-                'user_id': request.user.id,
-                'timestamp': timezone.now().isoformat(),
-                'hash': hashlib.sha256(pdf_content).hexdigest(),
-                'digital_signature': signature,
-                'ipfs_cid': ipfs_cid,
-                'details': f'Prescription generated: {radio.get_exam_type_display()} - {radio.get_body_part_display()}'
-            }
-
-            blockchain_transaction = Transaction(
-                sender=wallet_obj,
-                recipient="System",
-                data=transaction_data
-            )
-
-            
-            if medical_blockchain.add_transaction(blockchain_transaction):
-                block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                if block:
-                    logger.info(f"Blockchain transaction successful: {blockchain_transaction.transaction_id}")
-                else:
-                    logger.error("Failed to mine block")
-            else:
-                logger.error("Failed to add transaction to blockchain")
-            
+        # Retourner le PDF
         response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
@@ -4510,7 +4292,7 @@ def download_medical_document(request, document_id):
 
 @login_required
 def export_medical_records(request):
-    """Exporter les dossiers médicaux du patient en PDF avec ReportLab, IPFS et Blockchain"""
+    """Exporter les dossiers médicaux du patient en PDF avec ReportLab et IPFS"""
     try:
         if not hasattr(request.user, 'patient'):
             messages.error(request, "Accès non autorisé.")
@@ -4759,32 +4541,12 @@ def export_medical_records(request):
                     ipfs_hash=ipfs_cid
                 )
                 
-              
-                try:
-                    pdf_file = ContentFile(pdf_content, name=filename)
-                    medical_doc.file_attachment.save(filename, pdf_file, save=True)
-                    logger.info(f"Medical document {medical_doc.id} PDF saved successfully")
-                    
-                except Exception as content_file_error:
-                    logger.warning(f"ContentFile method failed: {content_file_error}")
-                    
-                    # Fallback method
-                    try:
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-                            temp_file.write(pdf_content)
-                            temp_file.flush()
-                            
-                            with open(temp_file.name, 'rb') as f:
-                                from django.core.files import File
-                                django_file = File(f, name=filename)
-                                medical_doc.file_attachment.save(filename, django_file, save=True)
-                        
-                        os.unlink(temp_file.name)
-                        logger.info(f"Medical document {medical_doc.id} PDF saved using temp file")
-                        
-                    except Exception as temp_file_error:
-                        logger.error(f"All PDF saving methods failed: {temp_file_error}")
-                
+                # Save PDF locally
+                pdf_file = ContentFile(pdf_content, name=filename)
+                medical_doc.file_attachment.save(filename, pdf_file, save=True)
+
+                # Update the radio with the document reference
+             
                 logger.info(f"Medical document {medical_doc.id} created successfully")
                 
             except Exception as doc_error:
@@ -4802,101 +4564,16 @@ def export_medical_records(request):
                 except Exception as basic_doc_error:
                     logger.error(f"Failed to create basic document: {basic_doc_error}")
 
-            # 4. Create digital signature
-            try:
-                if wallet_obj:
-                    export_data = {
-                        'export_type': 'complete_medical_records',
-                        'patient_id': patient.id,
-                        'document_id': medical_doc.id if medical_doc else None,
-                        'ipfs_cid': ipfs_cid,
-                        'timestamp': timezone.now().isoformat(),
-                        'hash': hashlib.sha256(pdf_content).hexdigest(),
-                        'records_count': {
-                            'consultations': consultations.count(),
-                            'prescriptions': prescriptions.count(),
-                            'analyses': analyses.count(),
-                            'radiology_exams': radiology_orders.count(),
-                            'documents': documents.count()
-                        }
-                    }
-                    signature = wallet_obj.sign_data(json.dumps(export_data, sort_keys=True))
-                    logger.info("Digital signature created for medical records export")
-                else:
-                    signature = None
-                    logger.warning("No wallet available for digital signature")
-            except Exception as signature_error:
-                logger.error(f"Digital signature creation failed: {signature_error}")
-                signature = None
-
-            # 5. Create blockchain transaction
-            try:
-                if wallet_obj:
-                    transaction_data = {
-                        'action': 'complete_medical_records_export',
-                        'patient_id': patient.id,
-                        'document_id': medical_doc.id if medical_doc else None,
-                        'user_id': request.user.id,
-                        'timestamp': timezone.now().isoformat(),
-                        'ipfs_cid': ipfs_cid,
-                        'pdf_hash': hashlib.sha256(pdf_content).hexdigest(),
-                        'digital_signature': signature,
-                        'records_summary': {
-                            'consultations': consultations.count(),
-                            'prescriptions': prescriptions.count(),
-                            'analyses': analyses.count(),
-                            'radiology_exams': radiology_orders.count(),
-                            'documents': documents.count()
-                        },
-                        'details': f'Complete medical records export for patient {patient.user.get_full_name()}'
-                    }
-
-                    blockchain_transaction = Transaction(
-                        sender=wallet_obj,
-                        recipient="System",
-                        data=transaction_data
-                    )
-                    
-                    if blockchain_transaction.sign_transaction():
-                        if medical_blockchain.add_transaction(blockchain_transaction):
-                            block = medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
-                            if block:
-                                logger.info(f"Blockchain transaction successful: {blockchain_transaction.transaction_id}")
-                            else:
-                                logger.error("Failed to mine block for medical records export")
-                        else:
-                            logger.error("Failed to add transaction to blockchain")
-                    else:
-                        logger.error("Failed to sign blockchain transaction")
-                else:
-                    logger.warning("No wallet available for blockchain transaction")
-                    
-            except Exception as blockchain_error:
-                logger.error(f"Blockchain transaction failed: {blockchain_error}")
-
-            try:
-                
-                logger.info("Activity logged successfully with IPFS details")
-            except Exception as log_error:
-                logger.error(f"Activity logging failed: {log_error}")
-                try:
-                   
-                    logger.info("Alternative activity logged successfully")
-                except Exception as alt_log_error:
-                    logger.error(f"Alternative activity logging failed: {alt_log_error}")
-
-            logger.info(f"Complete medical records export successful for patient {patient.id} with IPFS CID: {ipfs_cid}")
-
-            # Return the PDF
-            response = HttpResponse(pdf_content, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
+        # Retourner le PDF
+        response = HttpResponse(pdf_content, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
         
     except Exception as e:
         logger.exception(f"Error exporting medical records for patient {request.user.id}: {e}")
         messages.error(request, f"Erreur lors de l'export: {str(e)}")
         return redirect('my_medical_records')
-    
+ 
 
 def normalize_pem(pem_str):
     """Nettoie les clés PEM pour comparaison."""
@@ -4904,7 +4581,6 @@ def normalize_pem(pem_str):
 
 def save_private_key(wallet_obj, user_type, filename=None):
     """Sauvegarde uniquement la clé privée et la clé publique dans le fichier selon le type d'utilisateur"""
-    import os, json
 
     wallet_files = {
         'patient': 'hospital/Patient_Wallet_details.json',
@@ -4921,7 +4597,7 @@ def save_private_key(wallet_obj, user_type, filename=None):
         "private_key": wallet_obj._private_key.export_key().decode(),
     }
 
-    # Charger les anciennes données s'il y en a
+    # Charger les anciennes données 
     existing_wallets = []
     if os.path.exists(wallet_file):
         with open(wallet_file, "r") as f:
