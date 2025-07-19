@@ -1,0 +1,698 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Radiological Images{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/lightbox.min.css' %}" rel="stylesheet">
+<style>
+    .image-viewer {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    .dicom-viewer {
+        width: 100%;
+        height: 500px;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    .image-thumbnail {
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .image-thumbnail:hover {
+        transform: scale(1.05);
+    }
+    .image-controls {
+        background: rgba(0,0,0,0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    .main-image-container {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background: #000;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .main-image {
+        max-width: 100%;
+        max-height: 600px;
+        cursor: grab;
+        transition: transform 0.3s ease;
+    }
+    .main-image:active {
+        cursor: grabbing;
+    }
+    .image-info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+    .brightness-contrast-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .slider-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .slider-container input[type="range"] {
+        width: 100px;
+    }
+    .slider-container label {
+        font-size: 11px;
+        margin-bottom: 2px;
+    }
+    .measurement-tool {
+        position: absolute;
+        top: 50px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        display: none;
+    }
+    .annotation-tool {
+        cursor: crosshair;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-images me-2"></i>
+                        Radiological Images
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Exam Info -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-user me-2"></i>{{ radio.patient.user.get_full_name }}</h6>
+                                        <p class="mb-0">
+                                            <strong>Age:</strong> {{ radio.patient.age }} years |
+                                            <strong>Exam Date:</strong> {{ radio.performed_date|date:"d/m/Y" }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-x-ray me-2"></i>{{ radio.get_exam_type_display }} - {{ radio.get_body_part_display }}</h6>
+                                        <p class="mb-0">
+                                            <strong>PACS:</strong> {{ radio.pacs_number|default:"N/A" }} |
+                                            <strong>Quality:</strong> {{ radio.get_image_quality_display|default:"N/A" }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if radio.images.all %}
+                        <!-- Image Controls -->
+                        <div class="image-controls mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="zoom-in">
+                                            <i class="fas fa-search-plus"></i> Zoom +
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="zoom-out">
+                                            <i class="fas fa-search-minus"></i> Zoom -
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="reset-zoom">
+                                            <i class="fas fa-expand-arrows-alt"></i> Reset
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="brightness-contrast-controls">
+                                        <div class="slider-container">
+                                            <label>Brightness</label>
+                                            <input type="range" id="brightness" min="0" max="200" value="100">
+                                        </div>
+                                        <div class="slider-container">
+                                            <label>Contrast</label>
+                                            <input type="range" id="contrast" min="0" max="200" value="100">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="rotate-left">
+                                            <i class="fas fa-undo"></i> Rotate Left
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="rotate-right">
+                                            <i class="fas fa-redo"></i> Rotate Right
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="fullscreen">
+                                            <i class="fas fa-expand"></i> Fullscreen
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Additional Tools -->
+                            <div class="row mt-2">
+                                <div class="col-md-12">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="invert-colors">
+                                            <i class="fas fa-adjust"></i> Invert
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="measure-tool">
+                                            <i class="fas fa-ruler"></i> Measure
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="annotate-tool">
+                                            <i class="fas fa-pen"></i> Annotate
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="window-level">
+                                            <i class="fas fa-sliders-h"></i> Windowing
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Main Image Display -->
+                        <div class="row">
+                            <div class="col-md-9">
+                                <div class="card">
+                                    <div class="card-body p-0">
+                                        <div class="main-image-container" id="main-image-container">
+                                            <img id="main-image" 
+                                                 src="{{ radio.images.first.image.url }}" 
+                                                 class="main-image"
+                                                 alt="Radiological Image"
+                                                 draggable="false">
+                                            
+                                            <!-- Image Info Overlay -->
+                                            <div class="image-info" id="image-info">
+                                                <div>Image: <span id="current-image-index">1</span> / {{ radio.images.count }}</div>
+                                                <div>Zoom: <span id="zoom-level">100%</span></div>
+                                                <div id="image-dimensions"></div>
+                                            </div>
+                                            
+                                            <!-- Measurement Tool Overlay -->
+                                            <div class="measurement-tool" id="measurement-info">
+                                                <div>Distance: <span id="measurement-value">0 px</span></div>
+                                                <button type="button" class="btn btn-sm btn-outline-light" onclick="clearMeasurements()">
+                                                    <i class="fas fa-eraser"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Navigation Controls -->
+                                <div class="text-center mt-3">
+                                    <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-outline-primary" id="prev-image" 
+                                                {% if radio.images.count <= 1 %}disabled{% endif %}>
+                                            <i class="fas fa-chevron-left"></i> Previous
+                                        </button>
+                                        <button type="button" class="btn btn-outline-primary" id="next-image"
+                                                {% if radio.images.count <= 1 %}disabled{% endif %}>
+                                            Next <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Thumbnails and Information -->
+                            <div class="col-md-3">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Images ({{ radio.images.count }})</h6>
+                                    </div>
+                                    <div class="card-body image-viewer">
+                                        {% for image in radio.images.all %}
+                                        <div class="mb-3">
+                                            <img src="{{ image.image.url }}" 
+                                                class="img-thumbnail image-thumbnail w-100" 
+                                                data-main-src="{{ image.image.url }}"
+                                                data-lightbox="radio-images"
+                                                data-title="{{ image.description|default:'Image '|add:forloop.counter }}"
+                                                data-index="{{ forloop.counter0 }}"
+                                                onclick="loadMainImage('{{ image.image.url|escapejs }}', {{ forloop.counter0 }})">
+
+                                            <div class="text-center mt-1">
+                                                <small class="text-muted">
+                                                    {{ image.description|default:"Image "|add:forloop.counter }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Image Information Panel -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Technical Information</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if radio.technical_parameters %}
+                                        <p><strong>Parameters:</strong><br>
+                                        <small>{{ radio.technical_parameters|linebreaks }}</small></p>
+                                        {% endif %}
+                                        
+                                        {% if radio.radiation_dose %}
+                                        <p><strong>Dose:</strong> {{ radio.radiation_dose }} mGy</p>
+                                        {% endif %}
+                                        
+                                        {% if radio.contrast_used %}
+                                        <p><strong>Contrast:</strong> {{ radio.contrast_agent|default:"Yes" }}
+                                        {% if radio.contrast_volume %}({{ radio.contrast_volume }} ml){% endif %}</p>
+                                        {% endif %}
+                                        
+                                        <p><strong>Quality:</strong> {{ radio.get_image_quality_display|default:"Not specified" }}</p>
+                                        
+                                        {% if radio.artifacts_present %}
+                                        <div class="alert alert-warning p-2">
+                                            <small><strong>Artifacts Present:</strong><br>
+                                            {{ radio.artifacts_description }}</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    {% else %}
+                        <!-- No Images Available -->
+                        <div class="text-center py-5">
+                            <i class="fas fa-images fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No images available</h5>
+                            <p class="text-muted">Radiological images have not yet been uploaded for this exam.</p>
+                            {% if radio.status == 'pending' %}
+                            <a href="{% url 'edit_radio_results' radio.id %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-edit me-2"></i>Edit Exam
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'radio_list' radio.patient.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left me-2"></i>Back to List
+                                </a>
+                                <div>
+                                    {% if radio.status == 'completed' %}
+                                    <a href="{% url 'generate_radio_pdf' radio.id %}" class="btn btn-success me-2">
+                                        <i class="fas fa-file-pdf me-2"></i>Download PDF
+                                    </a>
+                                    {% endif %}
+                                    {% if radio.status != 'completed' %}
+                                    <a href="{% url 'edit_radio_results' radio.id %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-edit me-2"></i>Edit Exam
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<script id="radio-data" type="application/json">
+{
+    "totalImages": {{ radio.images.count }},
+    "imageUrls": [
+        {% for image in radio.images.all %}
+        "{{ image.image.url }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/lightbox.min.js' %}"></script>
+<script>
+// Global variables for image manipulation
+let currentScale = 1;
+let currentRotation = 0;
+let currentBrightness = 100;
+let currentContrast = 100;
+let isInverted = false;
+let currentImageIndex = 0;
+let totalImages = 0;
+let imageUrls = [];
+
+// Pan variables
+let isPanning = false;
+let startX, startY, translateX = 0, translateY = 0;
+
+// Measurement variables
+let isMeasuring = false;
+let measurementPoints = [];
+
+// Initialize image viewer
+document.addEventListener('DOMContentLoaded', function() {
+    // Load data from JSON script
+    const radioData = JSON.parse(document.getElementById('radio-data').textContent);
+    totalImages = radioData.totalImages;
+    imageUrls = radioData.imageUrls;
+    
+    const mainImage = document.getElementById('main-image');
+    if (mainImage) {
+        updateImageInfo();
+        setupImageControls();
+        setupPanAndZoom();
+    }
+});
+
+// Load main image
+function loadMainImage(url, index) {
+    const mainImage = document.getElementById('main-image');
+    mainImage.src = url;
+    currentImageIndex = index;
+    
+    // Reset transformations
+    resetImageTransforms();
+    updateImageInfo();
+    
+    // Update active thumbnail
+    document.querySelectorAll('.image-thumbnail').forEach(function(thumb, i) {
+        thumb.classList.toggle('border-primary', i === index);
+        thumb.classList.toggle('border-3', i === index);
+    });
+}
+
+// Setup image controls
+function setupImageControls() {
+    // Zoom controls
+    document.getElementById('zoom-in').addEventListener('click', function() { 
+        zoomImage(1.2); 
+    });
+    document.getElementById('zoom-out').addEventListener('click', function() { 
+        zoomImage(0.8); 
+    });
+    document.getElementById('reset-zoom').addEventListener('click', resetImageTransforms);
+    
+    // Rotation controls
+    document.getElementById('rotate-left').addEventListener('click', function() { 
+        rotateImage(-90); 
+    });
+    document.getElementById('rotate-right').addEventListener('click', function() { 
+        rotateImage(90); 
+    });
+    
+    // Brightness and contrast
+    document.getElementById('brightness').addEventListener('input', updateBrightness);
+    document.getElementById('contrast').addEventListener('input', updateContrast);
+    
+    // Additional tools
+    document.getElementById('invert-colors').addEventListener('click', invertColors);
+    document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('measure-tool').addEventListener('click', toggleMeasureTool);
+    
+    // Navigation
+    const prevBtn = document.getElementById('prev-image');
+    const nextBtn = document.getElementById('next-image');
+    if (prevBtn) prevBtn.addEventListener('click', showPreviousImage);
+    if (nextBtn) nextBtn.addEventListener('click', showNextImage);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+// Zoom image
+function zoomImage(factor) {
+    currentScale *= factor;
+    currentScale = Math.max(0.1, Math.min(currentScale, 10)); // Limit zoom range
+    applyImageTransforms();
+    updateImageInfo();
+}
+
+// Rotate image
+function rotateImage(degrees) {
+    currentRotation += degrees;
+    currentRotation = currentRotation % 360;
+    applyImageTransforms();
+}
+
+// Update brightness
+function updateBrightness(event) {
+    currentBrightness = event.target.value;
+    applyImageTransforms();
+}
+
+// Update contrast
+function updateContrast(event) {
+    currentContrast = event.target.value;
+    applyImageTransforms();
+}
+
+// Invert colors
+function invertColors() {
+    isInverted = !isInverted;
+    document.getElementById('invert-colors').classList.toggle('active', isInverted);
+    applyImageTransforms();
+}
+
+// Apply all image transformations
+function applyImageTransforms() {
+    const mainImage = document.getElementById('main-image');
+    const brightness = currentBrightness / 100;
+    const contrast = currentContrast / 100;
+    const invert = isInverted ? 'invert(1)' : 'invert(0)';
+    
+    mainImage.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + currentScale + ') rotate(' + currentRotation + 'deg)';
+    mainImage.style.filter = 'brightness(' + brightness + ') contrast(' + contrast + ') ' + invert;
+}
+
+// Reset image transforms
+
+function resetImageTransforms() {
+    currentScale = 1;
+    currentRotation = 0;
+    currentBrightness = 100;
+    currentContrast = 100;
+    isInverted = false;
+    translateX = 0;
+    translateY = 0;
+    
+    // Reset controls
+    document.getElementById('brightness').value = 100;
+    document.getElementById('contrast').value = 100;
+    document.getElementById('invert-colors').classList.remove('active');
+    
+    applyImageTransforms();
+    updateImageInfo();
+}
+
+
+// Setup pan and zoom with mouse
+function setupPanAndZoom() {
+    const container = document.getElementById('main-image-container');
+    const mainImage = document.getElementById('main-image');
+    
+    // Mouse wheel zoom
+    container.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        zoomImage(zoomFactor);
+    });
+    
+    // Pan functionality
+    mainImage.addEventListener('mousedown', startPan);
+    document.addEventListener('mousemove', doPan);
+    document.addEventListener('mouseup', endPan);
+}
+
+// Pan functions
+function startPan(e) {
+    if (currentScale > 1) {
+        isPanning = true;
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        document.getElementById('main-image').style.cursor = 'grabbing';
+    }
+}
+
+function doPan(e) {
+    if (isPanning) {
+        translateX = e.clientX - startX;
+        translateY = e.clientY - startY;
+        applyImageTransforms();
+    }
+}
+
+function endPan() {
+    isPanning = false;
+    document.getElementById('main-image').style.cursor = 'grab';
+}
+
+// Toggle fullscreen
+function toggleFullscreen() {
+    const container = document.getElementById('main-image-container');
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(function(err) {
+            console.log('Fullscreen error:', err);
+        });
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+// Navigation functions
+function showPreviousImage() {
+    if (currentImageIndex > 0) {
+        loadMainImage(imageUrls[currentImageIndex - 1], currentImageIndex - 1);
+    }
+}
+
+function showNextImage() {
+    if (currentImageIndex < totalImages - 1) {
+        loadMainImage(imageUrls[currentImageIndex + 1], currentImageIndex + 1);
+    }
+}
+
+// Keyboard shortcuts
+function handleKeyboardShortcuts(e) {
+    switch(e.key) {
+        case 'ArrowLeft':
+            e.preventDefault();
+            showPreviousImage();
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            showNextImage();
+            break;
+        case '+':
+        case '=':
+            e.preventDefault();
+            zoomImage(1.2);
+            break;
+        case '-':
+            e.preventDefault();
+            zoomImage(0.8);
+            break;
+        case '0':
+            e.preventDefault();
+            resetImageTransforms();
+            break;
+        case 'f':
+        case 'F':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                toggleFullscreen();
+            }
+            break;
+        case 'i':
+        case 'I':
+            e.preventDefault();
+            invertColors();
+            break;
+    }
+}
+
+// Update image info display
+function updateImageInfo() {
+    document.getElementById('current-image-index').textContent = currentImageIndex + 1;
+    document.getElementById('zoom-level').textContent = Math.round(currentScale * 100) + '%';
+    
+    const mainImage = document.getElementById('main-image');
+    if (mainImage.complete) {
+        document.getElementById('image-dimensions').textContent = 
+            mainImage.naturalWidth + ' × ' + mainImage.naturalHeight + ' px';
+    }
+}
+
+// Measurement tool
+function toggleMeasureTool() {
+    isMeasuring = !isMeasuring;
+    const button = document.getElementById('measure-tool');
+    const container = document.getElementById('main-image-container');
+    
+    button.classList.toggle('active', isMeasuring);
+    container.classList.toggle('annotation-tool', isMeasuring);
+    
+    if (isMeasuring) {
+        document.getElementById('measurement-info').style.display = 'block';
+        setupMeasurementTool();
+    } else {
+        document.getElementById('measurement-info').style.display = 'none';
+        clearMeasurements();
+    }
+}
+
+// Setup measurement functionality
+function setupMeasurementTool() {
+    const mainImage = document.getElementById('main-image');
+    
+    mainImage.addEventListener('click', function(e) {
+        if (isMeasuring) {
+            const rect = mainImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            measurementPoints.push({x: x, y: y});
+            
+            if (measurementPoints.length === 2) {
+                calculateDistance();
+                measurementPoints = []; // Reset for next measurement
+            }
+        }
+    });
+}
+
+// Calculate distance between measurement points
+function calculateDistance() {
+    if (measurementPoints.length === 2) {
+        const dx = measurementPoints[1].x - measurementPoints[0].x;
+        const dy = measurementPoints[1].y - measurementPoints[0].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        document.getElementById('measurement-value').textContent = 
+            Math.round(distance) + ' px';
+    }
+}
+
+// Clear measurements
+function clearMeasurements() {
+    measurementPoints = [];
+    document.getElementById('measurement-value').textContent = '0 px';
+}
+
+// Initialize lightbox
+if (typeof lightbox !== 'undefined') {
+    lightbox.option({
+        'resizeDuration': 200,
+        'wrapAround': true,
+        'albumLabel': 'Image %1 of %2'
+    });
+}
+</script>
+{% endblock %}
