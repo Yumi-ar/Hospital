@@ -1,12 +1,14 @@
+<!-- base.html -->
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Système de Gestion Hospitalière{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>{% block title %}Système de Gestion Hospitalière{% endblock %}</title>
+
     <style>
         :root {
             --primary: #4a6fa5;
@@ -213,6 +215,129 @@
             display: block;
         }
 
+        .alert-success.logout-message {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border: 1px solid #28a745;
+    border-left: 5px solid #28a745;
+    color: #155724;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.alert-success.logout-message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #28a745, #20c997, #28a745);
+    animation: shimmer 2s infinite;
+}
+
+.alert-success.logout-message .fas {
+    color: #28a745;
+    margin-right: 0.5rem;
+    font-size: 1.1em;
+}
+
+
+.alert.verify-message {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    border: 1px solid #28a745;
+    border-left: 5px solid #28a745;
+    color: #155724;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.alert.verify-message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #28a745, #20c997, #28a745);
+    animation: shimmer 2s infinite;
+}
+
+.alert.verify-message .fas {
+    color: #28a745;
+    margin-right: 0.5rem;
+    font-size: 1.1em;
+}
+
+.alert.verify-message {
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+
+
+
+
+.alert-success.logout-message {
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+.alert.suspend-message {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border: 1px solid #ffc107;
+    border-left: 5px solid #ff8c00;
+    color: #856404;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.alert.suspend-message::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ffc107, #ff8c00, #ffc107);
+    animation: shimmer 2s infinite;
+}
+
+.alert.suspend-message .fas {
+    color: #ff8c00;
+    margin-right: 0.5rem;
+    font-size: 1.1em;
+}
+
+.alert.suspend-message {
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
         @media (max-width: 768px) {
             .sidebar-toggle {
                 display: block;
@@ -272,17 +397,14 @@
             {% endif %}
 
             <main class="col-md-10 ms-sm-auto px-md-4 main-content">
-                {# Afficher les messages, sauf sur la page de login #}
                 {% if messages and not request.session.login_page %}
                     {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show mt-3" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <div class="alert {{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message|safe }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endfor %}
                 {% endif %}
-
-                {# Le contenu de la page va ici #}
                 {% block content %}{% endblock %}
             </main>
         </div>
@@ -294,91 +416,107 @@
 
     
 <div class="modal fade" id="infoModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content rounded-4 border-0 shadow">
-      {# Choisit la couleur d’en-tête selon message.tags #}
-      <div class="modal-header bg-{{ message_level_class }} text-white">
-        <h5 class="modal-title" id="infoModalLabel">
-          {% if message_level == 'success' %}
-            <i class="fas fa-check-circle me-2"></i>Succès
-          {% else %}
-            <i class="fas fa-exclamation-triangle me-2"></i>Erreur
-          {% endif %}
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body text-center">
-        {% if message_level == 'error' %}
-                <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
-          {% endif %}
-        <p id="modalMessage" class="mb-0"></p>
-      </div>
-      <div class="modal-footer justify-content-center border-0">
-        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fermer</button>
-      </div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="infoModalLabel">
+                        <i class="fas fa-check-circle me-2"></i>Succès
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p id="modalMessage" class="mb-0"></p>
+                </div>
+                <div class="modal-footer justify-content-center border-0">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Fermer</button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
-
-
-
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+   <script>
+    function showAlertModal(message) {
+        const alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
+        document.getElementById('alertModalBody').innerHTML = message;
+        alertModal.show();
+    }
+    function showModal(message, level) {
+        const header = document.querySelector('#infoModal .modal-header');
+        const title = document.getElementById('infoModalLabel');
+        
+        // Reset classes
+        header.className = 'modal-header';
+        title.innerHTML = '';
 
-        function showModal(message, level) {
-  // Détermine la classe bootstrap selon le niveau
-  const header = document.querySelector('#infoModal .modal-header');
-  header.classList.remove('bg-success','bg-danger','bg-warning','bg-info');
-  header.classList.add(
-    level === 'success' ? 'bg-success' :
-    level === 'warning' ? 'bg-warning' :
-    level === 'info'    ? 'bg-info'    :
-                         'bg-danger'
-  );
+        // Apply appropriate styling based on level
+        if (level === 'success') {
+            header.classList.add('bg-success', 'text-white');
+            title.innerHTML = '<i class="fas fa-check-circle me-2"></i>Succès';
+        } 
+        else if (level === 'warning') {
+            header.classList.add('bg-warning', 'text-dark');
+            title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Avertissement';
+        }
+        else if (level === 'info') {
+            header.classList.add('bg-info', 'text-white');
+            title.innerHTML = '<i class="fas fa-info-circle me-2"></i>Information';
+        }
+        else { // error
+            header.classList.add('bg-danger', 'text-white');
+            title.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Erreur';
+        }
 
+        document.getElementById('modalMessage').textContent = message;
+        const modal = new bootstrap.Modal(document.getElementById('infoModal'));
+        modal.show();
+    }
 
-  const title = document.getElementById('infoModalLabel');
-  if (level === 'success') {
-    title.innerHTML = '<i class="fas fa-check-circle me-2"></i>';
-  } else {
-    title.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Erreur';
-  }
-
-  document.getElementById('modalMessage').textContent = message;
-  new bootstrap.Modal(document.getElementById('infoModal')).show();
-}
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.querySelector('.sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const sidebarOverlay = document.getElementById('sidebarOverlay');
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+            });
             
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('show');
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
                 });
-                
-                if (sidebarOverlay) {
-                    sidebarOverlay.addEventListener('click', function() {
-                        sidebar.classList.remove('show');
-                    });
-                }
             }
+        }
 
-            {% if messages %}
-                {% for message in messages %}
+        // Afficher les messages non-spéciaux dans le modal
+        {% if messages %}
+            {% for message in messages %}
+                {% if 'use-alert-modal' in message.tags %}
+                    showAlertModal(`{{ message|safe }}`);
+                {% elif 'logout' not in message.tags and 'verify-message' not in message.tags and 'suspend-message' not in message.tags %}
                     showModal(
                         "{{ message|escapejs }}",
                         "{{ message.tags }}"
                     );
-                {% endfor %}
-            {% endif %}
+                {% endif %}
+            {% endfor %}
+        {% endif %}
 
-
+        // Faire disparaître automatiquement les messages de déconnexion après 5 secondes
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            setTimeout(function() {
+                alert.classList.remove('show');
+                alert.classList.add('fade');
+                setTimeout(function() {
+                    alert.remove();
+                }, 150);
+            }, 5000);
         });
-    </script>
+    });
+</script>
 
     
 
