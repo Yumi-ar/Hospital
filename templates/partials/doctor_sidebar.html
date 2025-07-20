@@ -1,0 +1,54 @@
+<div class="menu-toggle" aria-label="Toggle navigation">
+  <span></span><span></span><span></span>
+</div>
+<ul class="nav flex-column">
+    <!-- Dashboard -->
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'doctor_dashboard' %}">
+            <i class="fas fa-tachometer-alt"></i> Tableau de bord
+        </a>
+    </li>
+
+    <!-- My Consultations -->
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'consultations' %}">
+            <i class="fas fa-calendar-check"></i> Mes Consultations
+        </a>
+    </li>
+       
+    <li class="nav-item">
+    {% if patient and patient.id %}
+        <a class="nav-link" href="{% url 'analysis_list' patient_id=patient.id %}">
+    {% else %}
+    <a class="nav-link" href="#" onclick="showModal('Veuillez sélectionner un patient d\'abord'); return false;">
+
+    {% endif %}
+        <i class="fas fa-user-shield"></i>Analyses Medical
+    </a>
+</li> 
+<li class="nav-item">
+    {% if patient and patient.id %}
+        <a class="nav-link" href="{% url 'radio_list' patient_id=patient.id %}">
+    {% else %}
+        <a class="nav-link" href="#" onclick="showModal('Veuillez sélectionner un patient d\'abord'); return false;">
+
+    {% endif %}
+        <i class="fas fa-user-shield"></i> Medical radio
+    </a>
+</li> 
+        
+    <li class="nav-item">
+        <a class="nav-link" href="#patientRecordsSubmenu" data-bs-toggle="collapse" aria-expanded="false">
+        <i class="fas fa-folder-open"></i> Dossiers Patients <i class="fas fa-angle-down"></i>
+    </a>
+    <div id="patientRecordsSubmenu" class="collapse">
+        <ul class="nav flex-column ps-3">
+            {% for patient in patients %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'patient_records' patient.id %}">{{ patient.name }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    </li>
+</ul>

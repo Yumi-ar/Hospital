@@ -1,0 +1,46 @@
+<div class="menu-toggle" aria-label="Toggle navigation">
+  <span></span><span></span><span></span>
+</div>
+<div class="sidebar-container">
+    <ul class="nav flex-column">
+        <!-- Dashboard -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'patient_dashboard' %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Tableau de bord</span>
+            </a>
+        </li>
+
+        <!-- Medical Records -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'my_medical_records' %}">
+                <i class="fas fa-file-medical"></i>
+                <span>Mon Dossier Médical</span>
+            </a>
+        </li>
+
+        <!-- Export Medical Records -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'export_records' %}">
+                <i class="fas fa-download"></i>
+                <span>Export PDF</span>
+            </a>
+        </li>
+
+        <!-- Reimbursements -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'patient_reimbursements' %}">
+                <i class="fas fa-euro-sign"></i>
+                <span>Remboursements</span>
+            </a>
+        </li>
+
+        <!-- New Reimbursement -->
+        <li class="nav-item">
+            <a class="nav-link" href="{% url 'create_reimbursement' %}">
+                <i class="fas fa-plus-circle"></i>
+                <span>Nouvelle Demande</span>
+            </a>
+        </li>
+    </ul>
+</div>

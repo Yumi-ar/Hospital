@@ -1,0 +1,646 @@
+{% extends 'base.html' %}
+
+{% block title %}Mon Dossier Médical - {{ patient.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .dashboard-header {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-md);
+        border-left: 5px solid var(--medical-blue);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin-bottom: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: var(--shadow-sm);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: var(--primary);
+    }
+
+    .stat-card.consultations::before {
+        background: var(--medical-blue);
+    }
+
+    .stat-card.prescriptions::before {
+        background: var(--medical-teal);
+    }
+
+    .stat-card.radiology::before {
+        background: var(--medical-orange);
+    }
+
+    .stat-card.documents::before {
+        background: var(--medical-green);
+    }
+
+    .stat-card.personal-info::before {
+        background: var(--primary);
+    }
+
+    .stat-card.permissions::before {
+        background: var(--accent);
+    }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+    }
+
+    .stat-icon.consultations {
+        background-color: var(--medical-blue);
+    }
+
+    .stat-icon.prescriptions {
+        background-color: var(--medical-teal);
+    }
+
+    .stat-icon.radiology {
+        background-color: var(--medical-orange);
+    }
+
+    .stat-icon.documents {
+        background-color: var(--medical-green);
+    }
+
+    .stat-icon.personal-info {
+        background-color: var(--primary);
+    }
+
+    .stat-icon.permissions {
+        background-color: var(--accent);
+    }
+
+    .stat-title {
+        font-size: 0.9rem;
+        color: var(--gray);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-description {
+        font-size: 0.9rem;
+        color: var(--gray);
+    }
+
+    .nav-pills .nav-link {
+        border-radius: 8px;
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        color: var(--gray);
+        transition: var(--transition);
+    }
+
+    .nav-pills .nav-link.active {
+        background-color: var(--primary);
+        color: white;
+    }
+
+    .nav-pills .nav-link:hover {
+        background-color: var(--primary-light);
+        color: white;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .badge {
+        padding: 0.35rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--medical-blue);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-success {
+        background-color: var(--success);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-success:hover {
+        background-color: var(--medical-green);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-outline-primary {
+        border-color: var(--primary);
+        color: var(--primary);
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--primary);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-danger {
+        background-color: var(--danger);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-danger:hover {
+        background-color: var(--danger);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .btn-secondary {
+        background-color: var(--gray);
+        color: white;
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .empty-state {
+        color: var(--gray);
+        text-align: center;
+        padding: 1rem 0;
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-container {
+            padding: 1rem;
+        }
+
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .nav-pills {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .nav-pills .nav-link {
+            margin-bottom: 0.5rem;
+        }
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-file-medical me-2"></i> Mon Dossier Médical</h1>
+        <div class="btn-toolbar mt-3">
+            <div class="btn-group">
+                <a href="{% url 'export_records' %}" class="btn btn-success">
+                    <i class="fas fa-file-pdf"></i> Exporter en PDF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques rapides -->
+    <div class="stats-grid">
+        <div class="stat-card consultations">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Consultations</p>
+                    <h3 class="stat-value">{{ stats.total_consultations }}</h3>
+                    <p class="stat-description">Nombre total de consultations</p>
+                </div>
+                <div class="stat-icon consultations">
+                    <i class="fas fa-stethoscope"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card prescriptions">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Ordonnances</p>
+                    <h3 class="stat-value">{{ stats.total_prescriptions }}</h3>
+                    <p class="stat-description">Nombre total d'ordonnances</p>
+                </div>
+                <div class="stat-icon prescriptions">
+                    <i class="fas fa-prescription-bottle-alt"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card radiology">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Examens Radio</p>
+                    <h3 class="stat-value">{{ stats.total_radiology }}</h3>
+                    <p class="stat-description">Nombre total d'examens radiologiques</p>
+                </div>
+                <div class="stat-icon radiology">
+                    <i class="fas fa-x-ray"></i>
+                </div>
+            </div>
+        </div>
+        <div class="stat-card documents">
+            <div class="stat-header">
+                <div>
+                    <p class="stat-title">Documents</p>
+                    <h3 class="stat-value">{{ stats.total_documents }}</h3>
+                    <p class="stat-description">Nombre total de documents</p>
+                </div>
+                <div class="stat-icon documents">
+                    <i class="fas fa-file-medical"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informations Personnelles -->
+    <div class="stat-card personal-info">
+        <div class="stat-header">
+            <div>
+                <p class="stat-title">Mes Informations</p>
+                <h3 class="stat-value">Personnelles</h3>
+                <p class="stat-description">Détails du patient</p>
+            </div>
+            <div class="stat-icon personal-info">
+                <i class="fas fa-user"></i>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nom complet:</strong> {{ patient.user.get_full_name }}</p>
+                    <p><strong>Date de naissance:</strong> {{ patient.date_of_birth|date:"d/m/Y" }}</p>
+                    <p><strong>Sexe:</strong> {{ patient.get_gender_display }}</p>
+                    <p><strong>Email:</strong> {{ patient.user.email }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Téléphone:</strong> {{ patient.phone_number }}</p>
+                    <p><strong>Adresse:</strong> {{ patient.address }}</p>
+                    <p><strong>Contact d'urgence:</strong> {{ patient.emergency_contact|default:"Non renseigné" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation par onglets -->
+    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="pills-consultations-tab" data-bs-toggle="pill" data-bs-target="#pills-consultations" type="button" role="tab">
+                <i class="fas fa-stethoscope"></i> Consultations
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pills-prescriptions-tab" data-bs-toggle="pill" data-bs-target="#pills-prescriptions" type="button" role="tab">
+                <i class="fas fa-prescription-bottle-alt"></i> Ordonnances
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pills-radiology-tab" data-bs-toggle="pill" data-bs-target="#pills-radiology" type="button" role="tab">
+                <i class="fas fa-x-ray"></i> Examens Radiologiques
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pills-documents-tab" data-bs-toggle="pill" data-bs-target="#pills-documents" type="button" role="tab">
+                <i class="fas fa-file-medical"></i> Documents
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="pills-tabContent">
+        <!-- Consultations Tab -->
+        <div class="tab-pane fade show active" id="pills-consultations" role="tabpanel">
+            <div class="stat-card consultations">
+                <div class="stat-header">
+                    <div>
+                        <p class="stat-title">Mes Consultations</p>
+                        <h3 class="stat-value">{{ consultations|length }}</h3>
+                        <p class="stat-description">Historique des consultations</p>
+                    </div>
+                    <div class="stat-icon consultations">
+                        <i class="fas fa-stethoscope"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if consultations %}
+                        {% for consultation in consultations %}
+                        <div class="card mb-3 border-start border-4" style="border-color: var(--medical-blue);">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-calendar"></i> {{ consultation.date|date:"d/m/Y" }}
+                                            <span class="badge bg-primary ms-2">Dr. {{ consultation.doctor.user.get_full_name }}</span>
+                                        </h6>
+                                        <p class="card-text">
+                                            <strong>Symptômes:</strong> {{ consultation.symptoms|truncatechars:100 }}<br>
+                                            <strong>Diagnostic:</strong> {{ consultation.diagnosis|truncatechars:100 }}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <div class="mb-2">
+                                            <strong>Coût:</strong> {{ consultation.cost }} DA
+                                        </div>
+                                        <a href="{% url 'consultation_detail' consultation.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> Voir détails
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-stethoscope fa-3x mb-3"></i>
+                            <p>Aucune consultation enregistrée.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prescriptions Tab -->
+        <div class="tab-pane fade" id="pills-prescriptions" role="tabpanel">
+            <div class="stat-card prescriptions">
+                <div class="stat-header">
+                    <div>
+                        <p class="stat-title">Mes Ordonnances</p>
+                        <h3 class="stat-value">{{ prescriptions|length }}</h3>
+                        <p class="stat-description">Historique des ordonnances</p>
+                    </div>
+                    <div class="stat-icon prescriptions">
+                        <i class="fas fa-prescription-bottle-alt"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if prescriptions %}
+                        {% regroup prescriptions by consultation as consultation_prescriptions %}
+                        {% for consultation_group in consultation_prescriptions %}
+                        <div class="card mb-3 border-start border-4" style="border-color: var(--medical-teal);">
+                            <div class="card-header bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>Consultation du {{ consultation_group.grouper.date|date:"d/m/Y" }}</strong>
+                                        <br><small>Dr. {{ consultation_group.grouper.doctor.user.get_full_name }}</small>
+                                    </div>
+                                    <a href="{% url 'prescription_pdf' consultation_group.grouper.id %}" class="btn btn-sm btn-danger" target="_blank">
+                                        <i class="fas fa-file-pdf"></i> Télécharger PDF
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                {% for prescription in consultation_group.list %}
+                                <div class="row mb-2 {% if not forloop.last %}border-bottom pb-2{% endif %}">
+                                    <div class="col-md-3">
+                                        <strong>{{ prescription.medication_name }}</strong>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Dosage:</small><br>
+                                        {{ prescription.dosage }}
+                                    </div>
+                                    <div class="col-md-5">
+                                        <small class="text-muted">Instructions:</small><br>
+                                        {{ prescription.instructions }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Durée:</small><br>
+                                        {{ prescription.duration_days }} jours
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-prescription-bottle-alt fa-3x mb-3"></i>
+                            <p>Aucune ordonnance disponible.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Radiology Tab -->
+        <div class="tab-pane fade" id="pills-radiology" role="tabpanel">
+            <div class="stat-card radiology">
+                <div class="stat-header">
+                    <div>
+                        <p class="stat-title">Mes Examens Radiologiques</p>
+                        <h3 class="stat-value">{{ radiology_orders|length }}</h3>
+                        <p class="stat-description">Historique des examens radiologiques</p>
+                    </div>
+                    <div class="stat-icon radiology">
+                        <i class="fas fa-x-ray"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if radiology_orders %}
+                        {% for radio in radiology_orders %}
+                        <div class="card mb-3 border-start border-4" style="border-color: var(--medical-orange);">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6 class="card-title">
+                                            {{ radio.get_exam_type_display }} - {{ radio.get_body_part_display }}
+                                        </h6>
+                                        <p class="card-text">
+                                            <strong>Prescrit par:</strong> Dr. {{ radio.doctor.user.get_full_name }}<br>
+                                            <strong>Date de prescription:</strong> {{ radio.ordered_date|date:"d/m/Y" }}<br>
+                                            {% if radio.scheduled_date %}
+                                            <strong>Date prévue:</strong> {{ radio.scheduled_date|date:"d/m/Y" }}<br>
+                                            {% endif %}
+                                            {% if radio.performed_date %}
+                                            <strong>Date réalisée:</strong> {{ radio.performed_date|date:"d/m/Y" }}<br>
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <span class="badge 
+                                            {% if radio.status == 'completed' %}bg-success
+                                            {% elif radio.status == 'scheduled' %}bg-info
+                                            {% elif radio.status == 'pending' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ radio.get_status_display }}
+                                        </span>
+                                        <br>
+                                        <small class="text-muted mt-2 d-block">
+                                            Urgence: {{ radio.get_urgency_display }}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-x-ray fa-3x mb-3"></i>
+                            <p>Aucun examen radiologique prescrit.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents Tab -->
+        <div class="tab-pane fade" id="pills-documents" role="tabpanel">
+            <div class="stat-card documents">
+                <div class="stat-header">
+                    <div>
+                        <p class="stat-title">Mes Documents Médicaux</p>
+                        <h3 class="stat-value">{{ documents|length }}</h3>
+                        <p class="stat-description">Documents médicaux disponibles</p>
+                    </div>
+                    <div class="stat-icon documents">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if documents %}
+                        <div class="row">
+                            {% for document in documents %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100 border-start border-4" style="border-color: var(--medical-green);">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-file-alt"></i> {{ document.title }}
+                                        </h6>
+                                        <p class="card-text">
+                                            <small class="text-muted">
+                                                Type: {{ document.get_document_type_display }}<br>
+                                                Date: {{ document.created_at|date:"d/m/Y" }}<br>
+                                                {% if document.doctor %}
+                                                Médecin: Dr. {{ document.doctor.user.get_full_name }}
+                                                {% endif %}
+                                            </small>
+                                        </p>
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        {% if document.file_attachment %}
+                                        <a href="{% url 'download_document' document.id %}" class="btn btn-sm btn-success w-100">
+                                            <i class="fas fa-download"></i> Télécharger
+                                        </a>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-secondary w-100" disabled>
+                                            <i class="fas fa-file"></i> Pas de fichier
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="fas fa-file-medical fa-3x mb-3"></i>
+                            <p>Aucun document médical disponible.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}

@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+
+{% block title %}Traiter le remboursement #{{ reimbursement.id }}{% endblock %}
+
+{% block content %}
+<style>
+    
+    .reimbursement-container {
+        padding: 2rem;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .reimbursement-header {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+
+    .reimbursement-header h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin: 0;
+    }
+
+    .btn-toolbar .btn {
+        margin-left: 0.5rem;
+    }
+
+   
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -15px;
+        margin-left: -15px;
+    }
+
+    .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-right: 15px;
+        padding-left: 15px;
+    }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+        transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-3px);
+    }
+
+    .card-header {
+        background: linear-gradient(135deg, var(--primary), var(--medical-blue));
+        color: var(--light);
+        padding: 1.25rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .card-header h5,
+    .card-header h6 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .row dl {
+        margin-bottom: 0;
+    }
+
+    .row dt {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+    }
+
+    .row dd {
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    .badge {
+        font-weight: 600;
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+    }
+
+    .bg-primary {
+        background-color: var(--primary) !important;
+        color: var(--light);
+    }
+
+    .bg-warning {
+        background-color: var(--warning) !important;
+
+    }
+
+    .bg-success {
+        background-color: var(--success) !important;
+        color: var(--light);
+    }
+
+    .bg-danger {
+        background-color: var(--danger) !important;
+        color: var(--light);
+    }
+
+    .fs-6 {
+        font-size: 1rem;
+    }
+
+    .text-muted {
+        color: var(--text-light) !important;
+    }
+
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-outline-info {
+        color: var(--info);
+        border-color: var(--info);
+    }
+
+    .btn-outline-info:hover {
+        background-color: var(--info);
+        color: var(--light);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .border-success {
+        border-color: var(--success) !important;
+    }
+
+    .border-danger {
+        border-color: var(--danger) !important;
+    }
+
+    .text-success {
+        color: var(--success) !important;
+    }
+
+    .text-danger {
+        color: var(--danger) !important;
+    }
+
+    .list-unstyled {
+        padding-left: 0;
+        list-style: none;
+    }
+
+    .list-unstyled li {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .me-2 {
+        margin-right: 0.5rem !important;
+    }
+
+    @media (max-width: 768px) {
+        .reimbursement-container {
+            padding: 1rem;
+        }
+
+        .reimbursement-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .reimbursement-header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .btn-toolbar {
+            margin-top: 1rem;
+        }
+
+        .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            padding-right: 0;
+            padding-left: 0;
+        }
+    }
+</style>
+
+<div class="reimbursement-container">
+    <div class="reimbursement-header">
+        <h1>Traiter le remboursement #{{ reimbursement.id }}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <a href="{% url 'admin_reimbursements' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Détails du remboursement -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Détails de la demande</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Patient :</dt>
+                        <dd class="col-sm-8">
+                            <strong>{{ reimbursement.patient.user.get_full_name }}</strong><br>
+                            <small class="text-muted">{{ reimbursement.patient.user.email }}</small>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Montant demandé :</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-primary fs-6">{{ reimbursement.amount_requested|floatformat:2 }} DA</span>
+                        </dd>
+                        
+                        <dt class="col-sm-4">Date de soumission :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.submitted_at|date:"d/m/Y à H:i" }}</dd>
+                        
+                        <dt class="col-sm-4">Statut actuel :</dt>
+                        <dd class="col-sm-8">
+                            <span class="badge bg-warning text-dark">En attente</span>
+                        </dd>
+                        
+                        {% if reimbursement.description %}
+                        <dt class="col-sm-4">Description :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.description }}</dd>
+                        {% endif %}
+                        
+                        {% if reimbursement.receipt %}
+                        <dt class="col-sm-4">Reçu :</dt>
+                        <dd class="col-sm-8">
+                            <a href="{{ reimbursement.receipt.url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-file-download"></i> Télécharger le reçu
+                            </a>
+                        </dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+            
+            <!-- Informations sur le patient -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-user"></i> Informations sur le patient</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Nom complet :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.patient.user.get_full_name }}</dd>
+                        
+                        <dt class="col-sm-4">Email :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.patient.user.email }}</dd>
+                        
+                        {% if reimbursement.patient.phone %}
+                        <dt class="col-sm-4">Téléphone :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.patient.phone }}</dd>
+                        {% endif %}
+                        
+                        {% if reimbursement.patient.date_of_birth %}
+                        <dt class="col-sm-4">Date de naissance :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.patient.date_of_birth|date:"d/m/Y" }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-4">Membre depuis :</dt>
+                        <dd class="col-sm-8">{{ reimbursement.patient.user.date_joined|date:"d/m/Y" }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Formulaire de traitement -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-cogs"></i> Traitement de la demande</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'process_reimbursement' reimbursement.id %}" id="reimbursementForm">
+                        {% csrf_token %}
+                        
+                        <!-- Section d'approbation -->
+                        <div class="mb-4">
+                            <h6 class="text-success"><i class="fas fa-check-circle"></i> Approuver la demande</h6>
+                            <div class="border border-success rounded p-3 mb-3">
+                                <div class="mb-3">
+                                    <label for="amount_approved" class="form-label">Montant à approuver (DA)</label>
+                                    <input type="number" 
+                                           step="0.01" 
+                                           min="0" 
+                                           max="{{ reimbursement.amount_requested }}"
+                                           class="form-control" 
+                                           id="amount_approved" 
+                                           name="amount_approved" 
+                                           value="{{ reimbursement.amount_requested }}"
+                                           placeholder="0.00">
+                                    <small class="form-text text-muted">
+                                        Maximum : {{ reimbursement.amount_requested|floatformat:2 }} DA
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="admin_comments_approve" class="form-label">Commentaires (facultatif)</label>
+                                    <textarea class="form-control" 
+                                              id="admin_comments_approve" 
+                                              name="admin_comments" 
+                                              rows="3" 
+                                              placeholder="Commentaires sur l'approbation..."></textarea>
+                                </div>
+                                
+                                <button type="submit" name="action" value="approve" class="btn btn-success">
+                                    <i class="fas fa-check"></i> Approuver le remboursement
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Section de refus -->
+                        <div class="mb-4">
+                            <h6 class="text-danger"><i class="fas fa-times-circle"></i> Refuser la demande</h6>
+                            <div class="border border-danger rounded p-3">
+                                <div class="mb-3">
+                                    <label for="admin_comments_deny" class="form-label">Motif du refus</label>
+                                    <textarea class="form-control" 
+                                              id="admin_comments_deny" 
+                                              name="admin_comments" 
+                                              rows="3" 
+                                              placeholder="Veuillez expliquer le motif du refus..."></textarea>
+                                    <small class="form-text text-muted">
+                                        Ce commentaire sera visible par le patient.
+                                    </small>
+                                </div>
+                                
+                                <button type="submit" name="action" value="deny" class="btn btn-danger">
+                                    <i class="fas fa-times"></i> Refuser le remboursement
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Directives de traitement -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-lightbulb"></i> Directives de traitement</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Assurez-vous que le reçu est lisible et authentique
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Confirmez que le montant correspond au reçu
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            Vérifiez l'éligibilité conformément à la politique
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            Ajoutez des commentaires explicatifs si nécessaire
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="confirmModalLabel">
+          <i class="fas fa-question-circle me-2"></i>Confirmation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body" id="confirmModalBody">
+        <!-- le texte sera injecté par JS -->
+      </div>
+      <div class="modal-footer border-0 justify-content-center">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" id="confirmModalBtn" class="btn btn-primary">Confirmer</button>
+      </div>
+    </div>
+  </div>
+    </div>
+</div>
+
+ <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+        const confirmBtn = document.getElementById('confirmModalBtn');
+        const confirmBody = document.getElementById('confirmModalBody');
+        const form = document.getElementById('reimbursementForm');
+        let pendingAction = null;
+
+        // Gestion du bouton Approuver
+        document.querySelector('button[name="action"][value="approve"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('amount_approved').value) || 0;
+            
+            if (amount <= 0) {
+                showModal('<i class="fas fa-exclamation-triangle"></i> Veuillez saisir un montant valide à approuver.', 'alert-warning');
+                return;
+            }
+            
+            confirmBody.innerHTML = `Êtes-vous sûr de vouloir approuver ce remboursement de ${amount.toFixed(2)} DA ?`;
+            pendingAction = 'approve';
+            confirmModal.show();
+        });
+
+        // Gestion du bouton Refuser
+        document.querySelector('button[name="action"][value="deny"]').addEventListener('click', function(e) {
+            e.preventDefault();
+            const comments = document.getElementById('admin_comments_deny').value.trim();
+            
+            if (!comments) {
+                showModal('Veuillez fournir un motif pour le refus.', 'alert-warning');
+                return;
+            }
+            
+            confirmBody.innerHTML = 'Êtes-vous sûr de vouloir refuser ce remboursement ?';
+            pendingAction = 'deny';
+            confirmModal.show();
+        });
+
+        // Gestion de la confirmation
+        confirmBtn.addEventListener('click', function() {
+            if (pendingAction) {
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'action';
+                hiddenInput.value = pendingAction;
+                form.appendChild(hiddenInput);
+                form.submit();
+            }
+        });
+    });
+    </script>
+</div>
+{% endblock %}
