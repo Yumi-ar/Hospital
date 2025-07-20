@@ -114,7 +114,6 @@ class Transaction:
             transaction_dict = self.to_dict()
             transaction_dict.pop('signature', None)
             
-            # Utiliser json.dumps pour une sérialisation cohérente
             h = SHA256.new(json.dumps(transaction_dict, sort_keys=True).encode('utf8'))
             signature = signer.sign(h)
             self.signature = binascii.hexlify(signature).decode('ascii')
@@ -124,7 +123,6 @@ class Transaction:
             return None
         
     def verify_transaction(self, wallet_file="wallet.json"):
-        """Vérifie la transaction avec la clé publique depuis wallet.json"""
         if not self.signature:
             logger.error("Signature manquante")
             return False
@@ -150,7 +148,6 @@ class Transaction:
             transaction_dict.pop('signature', None)
             
             verifier = PKCS1_v1_5.new(sender_public_key)
-            # CORRECTION: Utiliser json.dumps comme dans sign_transaction
             h = SHA256.new(json.dumps(transaction_dict, sort_keys=True).encode('utf8'))
             
             result = verifier.verify(h, binascii.unhexlify(self.signature))
@@ -209,20 +206,23 @@ class Block:
         """Mine le bloc avec la difficulté donnée"""
         if not self.validate_transactions():
             raise ValueError("Transactions invalides dans le bloc")
+        
         start_time = time.time()
+        self.timestamp = datetime.datetime.now()
+    
         while True:
             self.hash = self.compute_hash()
             if self.hash.startswith(difficulty):
                 break
             self.nonce += 1
         mining_time = time.time() - start_time
-        logger.info(f"Bloc #{self.index} miné en {mining_time:.2f}s - Hash: {self.hash}")
-
+        print(f"Bloc #{self.index} miné en {mining_time:.2f}s")
+        print(f"Nonce final: {self.nonce}")
 
     def to_dict(self):
         return {
             "index": self.index,
-            "timestamp": self.timestamp.isoformat(),  # Format ISO 8601
+            "timestamp": self.timestamp.isoformat(),
             "transactions": [tx.to_dict() for tx in self.verified_transactions],
             "previous_hash": self.previous_hash,
             "hash": self.hash,
@@ -238,14 +238,13 @@ class Block:
             with open(filename, 'w') as json_file:
                 json.dump([], json_file)
 
-        # Lire le contenu existant du fichier
+        # Lire le contenu existant
         with open(filename, 'r') as json_file:
             data = json.load(json_file)
 
         # Ajouter le nouveau bloc
         data.append(dict0)
 
-        # Écrire les données mises à jour dans le fichier
         with open(filename, 'w') as json_file:
             json.dump(data, json_file, indent=4, separators=(',', ': '))
 
@@ -292,7 +291,6 @@ class Blockchain:
                 self.chain = chain_data
                 if not self.validate_chain(self.chain):
                     raise ValueError("La blockchain chargée est invalide")
-                # CORRECTION: Initialiser last_block_hash
                 Blockchain.last_block_hash = self.chain[-1]['hash'] if self.chain else None
                 print(f"Blockchain chargée avec {len(self.chain)} blocs")
     def _create_genesis_block(self):
@@ -308,25 +306,30 @@ class Blockchain:
         Blockchain.last_block_hash = genesis_block.hash
         print(f"Bloc Genesis créé")
         
-    def add_transaction(self, sender, recipient, data):
-        """Ajoute une transaction à la liste des transactions en attente"""
-        tx = Transaction(sender, recipient, data)
-        tx.signature = tx.sign_transaction()
+    def add_transaction(self, transaction_obj=None, sender=None, recipient=None, data=None):
+        
+        if transaction_obj is not None:
+            tx = transaction_obj
+        else:
+            if sender is None or recipient is None or data is None:
+                raise ValueError("sender, recipient et data sont requis quand transaction_obj n'est pas fourni")
+            tx = Transaction(sender, recipient, data)
+        
         if not tx.signature:
-            logger.error("Erreur de signature de la transaction")
-            return False
+            tx.signature = tx.sign_transaction()
+            if not tx.signature:
+                logger.error("Erreur de signature de la transaction")
+                return False
 
         if not tx.verify_transaction():
             logger.error("Vérification de la transaction échouée")
             return False
 
         self.pending_transactions.append(tx)
-        logger.info(f"Ajout de la transaction: {data}")
+        logger.info(f"Ajout de la transaction: {tx.data}")
         return True
-
-
-
-        
+    
+      
     def mine_pending_transactions(self, miner_address):
         """Traite les transactions en attente et crée un nouveau bloc"""
         if not self.pending_transactions:
@@ -346,7 +349,6 @@ class Blockchain:
         
         logger.info(f"[Nouveau Bloc Miné] Total blocs: {len(self.chain)}")
     
-        # Sauvegarde du nouveau bloc
         new_block.save_to_json() 
         return True
 
@@ -355,25 +357,40 @@ class Blockchain:
     @classmethod
     def validate_chain(cls, chain):
         """Valide l'intégrité de la blockchain"""
+        if not chain:
+            return False
+        
+        genesis = chain[0]
+        if genesis['index'] != 0 or genesis['previous_hash'] != '0'*64:
+            print("Bloc Genesis invalide")
+            return False
+
         for i, block_dict in enumerate(chain[1:], 1):
             try:
                 block = Block.from_dict(block_dict)
+                
+                # Intégrité du hash
+                computed_hash = block.compute_hash()
+                if block.hash != computed_hash:
+                    print(f"Hash invalide pour le bloc {block.index}")
+                    print(f"Hash enregistré : {block.hash}")
+                    print(f"Hash recalculé : {computed_hash}")
+                    return False
+
+                #  Chaînage correct
+                if block.previous_hash != chain[i-1]['hash']:
+                    print(f"Chaînage invalide au bloc {block.index}")
+                    print(f"Hash attendu : {chain[i-1]['hash']}")
+                    print(f"Hash trouvé  : {block.previous_hash}")
+                    return False
+                    
+                #Transactions valides
+                if not block.validate_transactions():
+                    print(f"Transactions invalides dans le bloc {block.index}")
+                    return False
+                    
             except Exception as e:
-                logger.error(f"Erreur lors de la reconstitution du bloc {i}: {e}")
-                return False
-
-            computed_hash = block.compute_hash()
-            if block.hash != computed_hash:
-                logger.error(f"Hash invalide pour le bloc {block.index}")
-                logger.error(f"Hash enregistré : {block.hash}")
-                logger.error(f"Hash recalculé : {computed_hash}")
-                return False
-
-            if block.previous_hash != chain[i-1]['hash']:
-                logger.error(f"Chaînage invalide au bloc {block.index}")
-                logger.error(f"Hash attendu : {chain[i-1]['hash']}")
-                logger.error(f"Hash trouvé  : {block.previous_hash}")
+                print(f"Erreur lors de la reconstitution du bloc {i}: {e}")
                 return False
 
         return True
-
