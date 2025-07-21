@@ -36,6 +36,7 @@ import logging
 import uuid
 from django.forms import modelformset_factory
 from django.template import Context 
+from django.conf import settings
 from .forms import *
 from .models import *
 from django.db.models import Q, Sum, Count
@@ -4140,44 +4141,58 @@ def generate_prescriptionradio_pdf(request, radio_id):
         return redirect('radio_list', patient_id=radio.patient.id if hasattr(radio, 'patient') else None)
 
 
-
-
-import pytz
-
 def view_blockchain(request):
-        """Afficher la blockchain (admin uniquement)"""
-        try:
-            blocks_data = []
-            for block in medical_blockchain.chain:
-                # Accédez aux attributs de l'objet Block
-                transactions = [tx.to_dict() for tx in block.transactions]
-
-                timestamp = block.timestamp.isoformat()
-
-                block_dict = {
-                    'index': block.index,
-                    'transactions': transactions,
-                    'previous_hash': block.previous_hash,
-                    'hash': block.hash,
-                    'nonce': block.nonce,
-                    'timestamp': timestamp
-                }
-                blocks_data.append(block_dict)
-
-            pending_transactions = [tx.to_dict() for tx in medical_blockchain.pending_transactions]
-
-            context = {
-                'blocks': blocks_data,
-                'pending_transactions': pending_transactions,
-                'is_valid': medical_blockchain.is_chain_valid()
+    try:
+        blocks_data = []
+        
+        for block in medical_blockchain.chain:
+            block_display = {
+                'index': block['index'],
+                'timestamp': block['timestamp'],
+                'transactions': [],
+                'previous_hash': block['previous_hash'],
+                'hash': block['hash'],
+                'nonce': block['nonce']
             }
-            logger.info(f"Blockchain viewed by admin {request.user.id}: {len(blocks_data)} blocks")
-            return render(request, 'blockchain_view.html', context)
-
-        except Exception as e:
-            logger.exception(f"Error in view_blockchain: {e}")
-            return render(request, '404.html', {'error': f"Erreur lors de l'affichage de la blockchain: {str(e)}"}, status=500)
-
+            
+            # Traiter les transactions
+            for tx in block.get('transactions', []):
+                tx_display = {
+                    'transaction_id': tx.get('transaction_id'),
+                    'sender': tx.get('sender'),
+                    'recipient': tx.get('recipient'),
+                    'timestamp': tx.get('timestamp'),
+                    'data': tx.get('data', {})
+                }
+                block_display['transactions'].append(tx_display)
+            
+            blocks_data.append(block_display)
+        
+        pending_display = []
+        for tx in medical_blockchain.pending_transactions:
+            if hasattr(tx, 'to_dict'):
+                tx = tx.to_dict()
+            
+            pending_display.append({
+                'transaction_id': tx.get('transaction_id'),
+                'sender': tx.get('sender'),
+                'recipient': tx.get('recipient'),
+                'timestamp': tx.get('timestamp'),
+                'data': tx.get('data', {})
+            })
+        
+        context = {
+            'blocks': blocks_data,
+            'pending_transactions': pending_display,
+            'is_valid': medical_blockchain.validate_chain(blocks_data)
+        }
+        
+        return render(request, 'blockchain_view.html', context)
+    
+    except Exception as e:
+        logger.exception(f"Error in view_blockchain: {e}")
+        return render(request, '404.html', {'error': str(e)})
+ 
 
 @login_required
 def my_medical_records(request):
