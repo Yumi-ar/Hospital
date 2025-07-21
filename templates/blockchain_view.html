@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid py-4" style="max-width: 1800px;">
     <header class="mb-5 text-center">
         <h1 class="display-4 text-primary">Medical Blockchain Explorer</h1>
         <div class="d-flex justify-content-center gap-4 my-4">
@@ -14,8 +14,7 @@
     </header>
 
     <div class="row">
-        <!-- Blocks Section -->
-        <div class="col-lg-8">
+        <div class="col-xl-9">
             <h2 class="mb-4 border-bottom pb-2">
                 <i class="bi bi-cube me-2"></i>Blocks
             </h2>
@@ -27,7 +26,7 @@
                         <h3 class="accordion-header" id="heading{{ block.index }}">
                             <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ block.index }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ block.index }}">
                                 <span class="me-3 badge bg-secondary">#{{ block.index }}</span>
-                                <span class="font-monospace small text-truncate me-2">{{ block.hash|slice:":16" }}...</span>
+                                <span class="font-monospace small text-truncate me-2" style="max-width: 200px;">{{ block.hash }}</span> 
                                 <span class="ms-auto small text-muted">{{ block.timestamp|date:"M d, Y H:i" }}</span>
                             </button>
                         </h3>
@@ -35,13 +34,15 @@
                             <div class="accordion-body">
                                 <div class="mb-3">
                                     <h5 class="d-inline-block me-2">Hash:</h5>
-                                    <code class="font-monospace small">{{ block.hash }}</code>
-                                    <button class="btn btn-sm btn-outline-secondary ms-2 py-0" onclick="copyToClipboard('{{ block.hash }}')">Copy</button>
+                                    <code class="font-monospace small d-inline-block text-truncate" style="max-width: 70%;">{{ block.hash }}</code>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2 py-0" onclick="copyToClipboard('{{ block.hash }}')">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
                                 </div>
                                 
                                 <div class="mb-3">
                                     <h5 class="d-inline-block me-2">Previous Hash:</h5>
-                                    <code class="font-monospace small">{{ block.previous_hash }}</code>
+                                    <code class="font-monospace small d-inline-block text-truncate" style="max-width: 70%;">{{ block.previous_hash }}</code>
                                 </div>
                                 
                                 <div class="d-flex gap-4 mb-3">
@@ -61,44 +62,55 @@
                                     <div class="list-group">
                                         {% for tx in block.transactions %}
                                         <div class="list-group-item">
-                                            <div class="d-flex justify-content-between">
-                                                <h6 class="mb-1 text-primary">{{ tx.data.action|default:"Unknown Action" }}</h6>
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1 text-primary">{{ tx.data.action|default:"Unknown Action" }}</h6>
+                                                    <div class="small mt-2">
+                                                        <div>
+                                                            <strong>From:</strong> 
+                                                            <span class="font-monospace d-inline-block text-truncate" style="max-width: 100%;" title="{{ tx.sender }}">
+                                                                {{ tx.sender }}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <strong>To:</strong> 
+                                                            <span class="font-monospace d-inline-block text-truncate" style="max-width: 100%;" title="{{ tx.recipient }}">
+                                                                {{ tx.recipient }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <small class="text-muted">{{ tx.timestamp|date:"H:i:s" }}</small>
                                             </div>
-                                            <div class="row small mt-2">
-                                                <div class="col-md-6">
-                                                    <strong>From:</strong> 
-                                                    <span class="font-monospace" title="{{ tx.sender }}">
-                                                        {{ tx.sender|slice:":8" }}...{{ tx.sender|slice:"-8:" }}
-                                                    </span>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <strong>To:</strong> {{ tx.recipient }}
-                                                </div>
-                                            </div>
+                                            
                                             <div class="mt-2">
                                                 <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#txDetails{{ tx.transaction_id }}" aria-expanded="false">
-                                                    Show Details
+                                                    <i class="bi bi-chevron-down me-1"></i>Details
                                                 </button>
                                                 <div class="collapse mt-2" id="txDetails{{ tx.transaction_id }}">
                                                     <div class="card card-body small">
                                                         <div class="mb-2">
                                                             <strong>TX ID:</strong> 
-                                                            <code>{{ tx.transaction_id }}</code>
+                                                            <code class="d-inline-block text-truncate" style="max-width: 90%;">{{ tx.transaction_id }}</code>
                                                         </div>
                                                         <div class="mb-2">
                                                             <strong>Data:</strong>
                                                             <ul class="mb-1">
                                                                 {% for key, value in tx.data.items %}
                                                                     {% if key != 'action' %}
-                                                                    <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+                                                                    <li>
+                                                                        <strong>{{ key|title }}:</strong> 
+                                                                        {% if value|length > 50 %}
+                                                                            <span class="font-monospace d-inline-block text-truncate" style="max-width: 300px;" title="{{ value }}">
+                                                                                {{ value }}
+                                                                            </span>
+                                                                        {% else %}
+                                                                            {{ value }}
+                                                                        {% endif %}
+                                                                    </li>
                                                                     {% endif %}
                                                                 {% endfor %}
                                                             </ul>
-                                                        </div>
-                                                        <div>
-                                                            <strong>Signature:</strong> 
-                                                            <code class="d-block text-truncate" style="max-width: 300px;">{{ tx.signature }}</code>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -121,7 +133,7 @@
         </div>
 
         <!-- Pending Transactions Section -->
-        <div class="col-lg-4">
+        <div class="col-xl-3"> 
             <div class="sticky-top" style="top: 20px;">
                 <h2 class="mb-4 border-bottom pb-2">
                     <i class="bi bi-hourglass-split me-2"></i>Pending Transactions
@@ -134,24 +146,31 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h6 class="mb-1 text-warning">{{ tx.data.action|default:"Unknown Action" }}</h6>
-                                    <small class="text-muted">{{ tx.timestamp|date:"M d, H:i" }}</small>
+                                    <div class="small mt-2">
+                                        <div>
+                                            <strong>From:</strong> 
+                                            <span class="font-monospace d-inline-block text-truncate" style="max-width: 150px;" title="{{ tx.sender }}">
+                                                {{ tx.sender }}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <strong>To:</strong> 
+                                            <span class="font-monospace d-inline-block text-truncate" style="max-width: 150px;" title="{{ tx.recipient }}">
+                                                {{ tx.recipient }}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span class="badge bg-secondary">Pending</span>
-                            </div>
-                            <div class="small mt-2">
                                 <div>
-                                    <strong>From:</strong> 
-                                    <span class="font-monospace">{{ tx.sender|slice:":8" }}...{{ tx.sender|slice:"-8:" }}</span>
-                                </div>
-                                <div>
-                                    <strong>To:</strong> {{ tx.recipient }}
+                                    <span class="badge bg-secondary">Pending</span>
+                                    <small class="text-muted d-block mt-1">{{ tx.timestamp|date:"H:i" }}</small>
                                 </div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
                 {% else %}
-                    <div class="alert alert-success">No pending transactions</div>
+                    <div class="alert2">No pending transactions</div>
                 {% endif %}
             </div>
         </div>
@@ -161,7 +180,14 @@
 <script>
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(function() {
-        // Optional: Show a tooltip or alert that text was copied
+        // Afficher un tooltip temporaire
+        const tooltip = new bootstrap.Tooltip(document.createElement('div'), {
+            title: 'Copied!',
+            placement: 'top',
+            trigger: 'manual'
+        });
+        tooltip.show();
+        setTimeout(() => tooltip.hide(), 1000);
     }, function(err) {
         console.error('Could not copy text: ', err);
     });
@@ -175,6 +201,7 @@ function copyToClipboard(text) {
 }
 .font-monospace {
     font-family: 'Courier New', monospace;
+    font-size: 0.9em;
 }
 .list-group-item {
     transition: all 0.2s;
@@ -182,6 +209,13 @@ function copyToClipboard(text) {
 .list-group-item:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.text-truncate {
+    display: inline-block;
+    vertical-align: middle;
+}
+.card-body ul {
+    padding-left: 1.5rem;
 }
 </style>
 {% endblock %}
