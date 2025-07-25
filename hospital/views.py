@@ -36,7 +36,6 @@ import logging
 import uuid
 from django.forms import modelformset_factory
 from django.template import Context 
-from django.conf import settings
 from .forms import *
 from .models import *
 from django.db.models import Q, Sum, Count
@@ -586,53 +585,65 @@ def patient_documents(request):
 
 @login_required
 def download_document(request, doc_id):
-    patient = request.user.patient
-    document = get_object_or_404(MedicalDocument, id=doc_id, patient=patient, is_active=True)
-    
-   
-    
-    if document.file_attachment:
-        try:
-            # Check if file exists
+    try:
+        document = get_object_or_404(MedicalDocument, id=doc_id, is_active=True)
+
+        user = request.user
+        if hasattr(user, 'patient'):
+            if document.patient != user.patient:
+                raise Http404("Ce document ne vous appartient pas.")
+        elif hasattr(user, 'doctor'):
+            if document.doctor != user.doctor:
+                raise Http404("Vous n'êtes pas l'auteur de ce document.")
+        else:
+            raise Http404("Accès non autorisé.")
+
+        # Si le document a un fichier attaché
+        if document.file_attachment:
             if not default_storage.exists(document.file_attachment.name):
-                raise Http404("Le fichier n'existe pas")
-            
-            # Open the file in binary mode
-            file = default_storage.open(document.file_attachment.name, 'rb')
-            file_content = file.read()
-            file.close()
-            
-            # Determine content type
-            content_type = 'application/octet-stream'
-            if document.file_attachment.name.lower().endswith('.pdf'):
-                content_type = 'application/pdf'
-            elif document.file_attachment.name.lower().endswith(('.jpg', '.jpeg')):
-                content_type = 'image/jpeg'
-            elif document.file_attachment.name.lower().endswith('.png'):
-                content_type = 'image/png'
-            elif document.file_attachment.name.lower().endswith('.txt'):
-                content_type = 'text/plain'
-            
-            # Create response
-            response = HttpResponse(file_content, content_type=content_type)
-            
-            # Set filename
-            filename = document.title
-            if not any(filename.lower().endswith(ext) for ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']):
-                ext = os.path.splitext(document.file_attachment.name)[1]
-                filename += ext
-            
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                raise Http404("Le fichier n'existe pas.")
+
+            try:
+                with default_storage.open(document.file_attachment.name, 'rb') as file:
+                    file_content = file.read()
+
+                # Déterminer le type MIME
+                ext = document.file_attachment.name.lower()
+                if ext.endswith('.pdf'):
+                    content_type = 'application/pdf'
+                elif ext.endswith(('.jpg', '.jpeg')):
+                    content_type = 'image/jpeg'
+                elif ext.endswith('.png'):
+                    content_type = 'image/png'
+                elif ext.endswith('.txt'):
+                    content_type = 'text/plain'
+                else:
+                    content_type = 'application/octet-stream'
+
+                # Nom du fichier final
+                filename = document.title
+                if not any(filename.lower().endswith(e) for e in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']):
+                    filename += os.path.splitext(document.file_attachment.name)[1]
+
+                response = HttpResponse(file_content, content_type=content_type)
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                return response
+
+            except Exception as e:
+                logger.error(f"Erreur lors de l'ouverture du fichier: {str(e)}")
+                raise Http404("Le fichier n'a pas pu être ouvert.")
+        else:
+            # Aucun fichier, renvoyer le contenu en .txt
+            response = HttpResponse(document.content or "", content_type='text/plain')
+            response['Content-Disposition'] = f'attachment; filename="{document.title}.txt"'
             return response
-            
-        except Exception as e:
-            logger.error(f"Erreur lors de l'ouverture du fichier: {str(e)}")
-            raise Http404("Le fichier n'a pas pu être ouvert")
-    else:
-        # Return content as text file if no attachment
-        response = HttpResponse(document.content, content_type='text/plain')
-        response['Content-Disposition'] = f'attachment; filename="{document.title}.txt"'
-        return response
+
+    except Http404 as e:
+        raise e
+    except Exception as e:
+        logger.error(f"Erreur lors du téléchargement: {str(e)}")
+        raise Http404("Erreur inattendue lors du téléchargement.")
+
 
 @login_required
 def upload_document(request):
@@ -751,7 +762,6 @@ def delete_document(request, document_id):
                 messages.error(request, "Erreur lors de l'enregistrement dans la blockchain.")
                 return redirect('patient_documents')
 
-            # Minage
             medical_blockchain.mine_pending_transactions(miner_address=NODE_IDENTIFIER)
 
 
@@ -1154,7 +1164,7 @@ def generate_prescription_pdf(request, consultation_id):
             spaceAfter=8,
             textColor=colors.black
         )
-        
+    
         # 1. INFORMATIONS DU DOCTEUR
         doctor_left_info = f"""
         <b><font size="14">Dr. {doctor.user.get_full_name()}</font></b><br/>
@@ -1236,16 +1246,15 @@ def generate_prescription_pdf(request, consultation_id):
         
         elements.append(Spacer(1, 40))
         
+        
         signature_text = f"""
-        <br/><br/>
         <font size="10">
         Date: {datetime.now().strftime('%d/%m/%Y')}<br/><br/>
-        Signature du médecin:<br/><br/><br/>
         Dr. {doctor.user.get_full_name()}<br/>
         {doctor.specialization}
         </font>
         """
-        
+
         signature_table = Table([[Paragraph(signature_text, styles['Normal'])]], colWidths=[6*inch])
         signature_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
@@ -1414,11 +1423,6 @@ def generate_prescription_pdf(request, consultation_id):
         return redirect('consultation_detail', consultation_id=consultation_id)
 
 
-
-# def calculate_age(birth_date):
-#     """Calculate age from birth date"""
-#     today = datetime.now().date()
-#     return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
 
 @login_required
 def consultations_list(request):
@@ -4141,6 +4145,10 @@ def generate_prescriptionradio_pdf(request, radio_id):
         return redirect('radio_list', patient_id=radio.patient.id if hasattr(radio, 'patient') else None)
 
 
+
+
+from django.conf import settings
+
 def view_blockchain(request):
     try:
         blocks_data = []
@@ -4192,7 +4200,7 @@ def view_blockchain(request):
     except Exception as e:
         logger.exception(f"Error in view_blockchain: {e}")
         return render(request, '404.html', {'error': str(e)})
- 
+    
 
 @login_required
 def my_medical_records(request):
@@ -4690,5 +4698,4 @@ def load_private_key(public_key_pem, user_type=None):
     
     logger.error("Aucune clé privée correspondante trouvée")
     return None
-
 
