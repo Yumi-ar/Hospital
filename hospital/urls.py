@@ -6,13 +6,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-
-
     path('', views.home, name='home'),
     path('contact-us', views.contact, name='contactus'),
     
     path('register/', views.registration_choice, name='registration_choice'),
-    path('login/', views.login_view, name='login'),  # Added trailing slash
+    path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'), 
     
     # Registration
@@ -34,7 +32,6 @@ urlpatterns = [
     path('patient/my-records/', views.my_medical_records, name='my_medical_records'),
     path('patient/consultation/<int:consultation_id>/', views.view_consultation_detail, name='consultation_detail'),
     path('patient/document/<int:document_id>/download/', views.download_medical_document, name='download_document'),
-    # path('patient/blockchain-summary/', views.patient_blockchain_summary, name='blockchain_summary'),
     path('patient/export-records/', views.export_medical_records, name='export_records'),
 
 
@@ -42,7 +39,7 @@ urlpatterns = [
     
 
 
-    # Patient Reimbursement URLs (separate from admin)
+    # Patient Reimbursement 
     path('patient/reimbursements/', views.patient_reimbursements, name='patient_reimbursements'),
     path('patient/reimbursements/create/', views.create_reimbursement, name='create_reimbursement'),
     path('patient/reimbursements/<int:reimbursement_id>/', views.reimbursement_detail, name='reimbursement_detail'),
@@ -58,7 +55,6 @@ urlpatterns = [
 
     # Doctor URLs
     path('doctor/dashboard/', views.doctor_dashboard, name='doctor_dashboard'),
-    # path('doctor/request-access/', views.request_patient_access, name='request_patient_access'),
     path('doctor/patient//<int:patient_id>/', views.patient_records, name='patient_records'),
     path('doctor/prescription/<int:patient_id>/', views.create_prescription, name='create_prescription'),
     path('prescription/pdf/<int:consultation_id>/', views.generate_prescription_pdf, name='prescription_pdf'),
@@ -88,6 +84,7 @@ urlpatterns = [
     path('blockchain/', views.view_blockchain, name='view_blockchain'),
 
 ]
+
 
 
 
