@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .import views ,auth_views
-from .decorators import patient_required, doctor_required, admin_required ,check_user_type_safe
+from .import views
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 from django.conf.urls.static import static
@@ -89,5 +88,6 @@ urlpatterns = [
     path('blockchain/', views.view_blockchain, name='view_blockchain'),
 
 ]
+
 
 
